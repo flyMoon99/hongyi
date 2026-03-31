@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum InspectionFrequency {
+  QUARTERLY
+  MONTHLY
+}
+
+enum ExperimentFrequency {
+  QUARTERLY
+  MONTHLY
+}
+
+model Employee {
+  id        String   @id @default(cuid())
+  name      String
+  gender    Gender   @default(MALE)
+  phone     String   @unique
+  password  String
+  avatar    String?
+  email     String?
+  isAdmin   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customerLogs   CustomerLog[]
+  inspectionLogs InspectionLog[]
+  experimentLogs ExperimentLog[]
+
+  @@map("employees")
+}
+
+model Customer {
+  id              String    @id @default(cuid())
+  companyName     String
+  projectOverview String?
+  contactPerson   String
+  contactInfo     String
+  lastPatrolTime  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  inspections  Inspection[]
+  experiments  Experiment[]
+  logs         CustomerLog[]
+
+  @@map("customers")
+}
+
+model CustomerLog {
+  id         String   @id @default(cuid())
+  customerId String
+  action     String
+  detail     String?
+  operatorId String
+  createdAt  DateTime @default(now())
+
+  customer  Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  operator  Employee @relation(fields: [operatorId], references: [id])
+
+  @@map("customer_logs")
+}
+
+model Inspection {
+  id                 String              @id @default(cuid())
+  customerId         String
+  frequency          InspectionFrequency @default(QUARTERLY)
+  powerEquipment     String
+  lastInspectionDate DateTime?
+  nextInspectionDate DateTime?
+  safetyTools        String?
+  contactPerson      String
+  contactInfo        String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  customer Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  logs     InspectionLog[]
+
+  @@map("inspections")
+}
+
+model InspectionLog {
+  id           String   @id @default(cuid())
+  inspectionId String
+  action       String
+  detail       String?
+  operatorId   String
+  createdAt    DateTime @default(now())
+
+  inspection Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  operator   Employee   @relation(fields: [operatorId], references: [id])
+
+  @@map("inspection_logs")
+}
+
+model Experiment {
+  id             String              @id @default(cuid())
+  customerId     String
+  frequency      ExperimentFrequency @default(QUARTERLY)
+  powerEquipment String
+  lastTestDate   DateTime?
+  nextTestDate   DateTime?
+  safetyTools    String?
+  contactPerson  String
+  contactInfo    String
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  customer Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  logs     ExperimentLog[]
+
+  @@map("experiments")
+}
+
+model ExperimentLog {
+  id           String   @id @default(cuid())
+  experimentId String
+  action       String
+  detail       String?
+  operatorId   String
+  createdAt    DateTime @default(now())
+
+  experiment Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  operator   Employee   @relation(fields: [operatorId], references: [id])
+
+  @@map("experiment_logs")
+}

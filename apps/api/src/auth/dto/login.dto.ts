@@ -1,0 +1,19 @@
+import { IsString, IsNotEmpty } from 'class-validator'
+
+export class LoginDto {
+  @IsString()
+  @IsNotEmpty({ message: '手机号不能为空' })
+  phone: string
+
+  @IsString()
+  @IsNotEmpty({ message: '密码不能为空' })
+  password: string
+
+  @IsString()
+  @IsNotEmpty({ message: '验证码不能为空' })
+  captcha: string
+
+  @IsString()
+  @IsNotEmpty({ message: 'sessionId不能为空' })
+  sessionId: string
+}
