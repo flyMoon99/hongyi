@@ -1,5 +1,6 @@
 'use client'
 
+import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { User, LogOut, Settings, ChevronRight } from 'lucide-react'
@@ -41,6 +42,23 @@ export function Header() {
   const { user, logout } = useAuth()
   const pathname = usePathname()
   const breadcrumbs = getBreadcrumbs(pathname)
+  const [userMenuMounted, setUserMenuMounted] = React.useState(false)
+  React.useEffect(() => setUserMenuMounted(true), [])
+
+  const userTriggerInner = (
+    <>
+      <Avatar className="h-8 w-8">
+        <AvatarImage src={user?.avatar || ''} />
+        <AvatarFallback className="bg-red-100 text-red-600 text-xs font-semibold">
+          {user?.name?.slice(0, 1) || 'U'}
+        </AvatarFallback>
+      </Avatar>
+      <div className="text-left hidden sm:block">
+        <p className="text-sm font-medium text-slate-800 leading-tight">{user?.name || '用户'}</p>
+        <p className="text-xs text-slate-500 leading-tight">{user?.isAdmin ? '管理员' : '普通用户'}</p>
+      </div>
+    </>
+  )
 
   return (
     <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-30 shadow-sm">
@@ -60,43 +78,43 @@ export function Header() {
         ))}
       </nav>
 
-      {/* User Menu */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={user?.avatar || ''} />
-              <AvatarFallback className="bg-red-100 text-red-600 text-xs font-semibold">
-                {user?.name?.slice(0, 1) || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="text-left hidden sm:block">
-              <p className="text-sm font-medium text-slate-800 leading-tight">{user?.name || '用户'}</p>
-              <p className="text-xs text-slate-500 leading-tight">{user?.isAdmin ? '管理员' : '普通用户'}</p>
-            </div>
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-44">
-          <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium">{user?.name}</p>
-              <p className="text-xs text-muted-foreground">{user?.phone}</p>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href="/profile" className="cursor-pointer">
-              <User className="mr-2 h-4 w-4" />
-              <span>个人信息</span>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={logout} className="text-red-600 focus:text-red-600 cursor-pointer">
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>退出登录</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {/* User Menu: Radix useId can mismatch SSR vs first client paint; mount after hydration */}
+      {userMenuMounted ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors"
+            >
+              {userTriggerInner}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium">{user?.name}</p>
+                <p className="text-xs text-muted-foreground">{user?.phone}</p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/profile" className="cursor-pointer">
+                <User className="mr-2 h-4 w-4" />
+                <span>个人信息</span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={logout} className="text-red-600 focus:text-red-600 cursor-pointer">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>退出登录</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : (
+        <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
+          {userTriggerInner}
+        </div>
+      )}
     </header>
   )
 }
