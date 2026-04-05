@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useCallback } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
 import type { CurrentUser } from '@/types'
 
 interface AuthContextType {
@@ -16,20 +16,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 const STORAGE_KEY = 'hongyi_user'
 const TOKEN_KEY = 'hongyi_token'
 
-// 默认管理员账号，开发阶段直接免登录
-const DEFAULT_ADMIN: CurrentUser = {
-  id: 'emp-1',
-  name: '张伟',
-  phone: '13800138001',
-  email: 'zhangwei@holdingpower.cn',
-  avatar: null,
-  isAdmin: true,
-  gender: 'MALE',
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<CurrentUser | null>(DEFAULT_ADMIN)
-  const [isLoading] = useState(false)
+  const [user, setUser] = useState<CurrentUser | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  // Initialize from localStorage on mount (client-only)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) {
+        setUser(JSON.parse(stored))
+      }
+    } catch {
+      // ignore parse errors
+    }
+    setIsLoading(false)
+  }, [])
 
   const login = useCallback((userData: CurrentUser, token: string) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(userData))

@@ -12,6 +12,12 @@ enum Gender {
   FEMALE
 }
 
+enum UserRole {
+  ADMIN
+  DEPT_MANAGER
+  STAFF
+}
+
 enum InspectionFrequency {
   QUARTERLY
   MONTHLY
@@ -23,22 +29,41 @@ enum ExperimentFrequency {
 }
 
 model Employee {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
-  gender    Gender   @default(MALE)
-  phone     String   @unique
+  gender    Gender    @default(MALE)
+  phone     String    @unique
   password  String
+  tokenVersion Int    @default(0)
   avatar    String?
   email     String?
-  isAdmin   Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      UserRole  @default(STAFF)
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  customerLogs   CustomerLog[]
-  inspectionLogs InspectionLog[]
-  experimentLogs ExperimentLog[]
+  customerLogs    CustomerLog[]
+  inspectionLogs  InspectionLog[]
+  experimentLogs  ExperimentLog[]
+  employeeLogs    EmployeeLog[]   @relation("target")
+  operatedLogs    EmployeeLog[]   @relation("operator")
 
   @@map("employees")
+}
+
+model EmployeeLog {
+  id         String   @id @default(cuid())
+  employeeId String
+  action     String
+  detail     String?
+  operatorId String
+  createdAt  DateTime @default(now())
+
+  employee Employee @relation("target", fields: [employeeId], references: [id])
+  operator Employee @relation("operator", fields: [operatorId], references: [id])
+
+  @@map("employee_logs")
 }
 
 model Customer {
@@ -51,9 +76,9 @@ model Customer {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  inspections  Inspection[]
-  experiments  Experiment[]
-  logs         CustomerLog[]
+  inspections Inspection[]
+  experiments Experiment[]
+  logs        CustomerLog[]
 
   @@map("customers")
 }
@@ -66,8 +91,8 @@ model CustomerLog {
   operatorId String
   createdAt  DateTime @default(now())
 
-  customer  Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  operator  Employee @relation(fields: [operatorId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  operator Employee @relation(fields: [operatorId], references: [id])
 
   @@map("customer_logs")
 }

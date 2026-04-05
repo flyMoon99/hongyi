@@ -1,7 +1,8 @@
+import type { UserRole, Gender } from './employee'
+
 export interface LoginDto {
   phone: string
   password: string
-  captcha: string
 }
 
 export interface LoginResponse {
@@ -12,8 +13,8 @@ export interface LoginResponse {
     phone: string
     email?: string | null
     avatar?: string | null
-    isAdmin: boolean
-    gender: string
+    role: UserRole
+    gender: Gender
   }
 }
 

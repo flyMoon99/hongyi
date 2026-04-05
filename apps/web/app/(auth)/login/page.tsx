@@ -6,11 +6,12 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { Eye, EyeOff, Lock, Smartphone, LogIn } from 'lucide-react'
+import { Eye, EyeOff, Lock, Smartphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/contexts/auth-context'
+import apiClient from '@/lib/api-client'
 import type { CurrentUser } from '@/types'
 
 const loginSchema = z.object({
@@ -19,39 +20,6 @@ const loginSchema = z.object({
 })
 
 type LoginForm = z.infer<typeof loginSchema>
-
-const MOCK_ACCOUNTS: Record<string, { user: CurrentUser; password: string }> = {
-  '13800138001': {
-    password: '123456',
-    user: {
-      id: 'emp-1',
-      name: '张伟',
-      phone: '13800138001',
-      email: 'zhangwei@holdingpower.cn',
-      avatar: null,
-      isAdmin: true,
-      gender: 'MALE',
-    },
-  },
-  '13800138002': {
-    password: '123456',
-    user: {
-      id: 'emp-2',
-      name: '李娜',
-      phone: '13800138002',
-      email: 'lina@holdingpower.cn',
-      avatar: null,
-      isAdmin: false,
-      gender: 'FEMALE',
-    },
-  },
-}
-
-function doLogin(account: { user: CurrentUser; password: string }, loginFn: (u: CurrentUser, t: string) => void) {
-  loginFn(account.user, 'mock-jwt-token-12345')
-  toast.success(`欢迎回来，${account.user.name}！`)
-  window.location.replace('/')
-}
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -62,25 +30,33 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   })
 
-  const onSubmit = async (data: LoginForm) => {
+  const doLogin = async (phone: string, password: string) => {
     setIsLoading(true)
-    await new Promise((r) => setTimeout(r, 400))
-
-    const account = MOCK_ACCOUNTS[data.phone.trim()]
-    if (!account || account.password !== data.password.trim()) {
-      toast.error('手机号或密码错误')
+    try {
+      const res = await apiClient.post('/auth/login', { phone, password }) as any
+      const data = res.accessToken ? res : res.data
+      const emp = data.employee
+      const currentUser: CurrentUser = {
+        id: emp.id,
+        name: emp.name,
+        phone: emp.phone,
+        email: emp.email ?? null,
+        avatar: emp.avatar ?? null,
+        role: emp.role,
+        gender: emp.gender,
+      }
+      login(currentUser, data.accessToken)
+      toast.success(`欢迎回来，${currentUser.name}！`)
+      window.location.replace('/')
+    } catch (err: any) {
+      toast.error(typeof err === 'string' ? err : '手机号或密码错误')
+    } finally {
       setIsLoading(false)
-      return
     }
-
-    doLogin(account, login)
   }
 
-  const quickLogin = async (phone: string) => {
-    setIsLoading(true)
-    await new Promise((r) => setTimeout(r, 400))
-    const account = MOCK_ACCOUNTS[phone]
-    if (account) doLogin(account, login)
+  const onSubmit = async (data: LoginForm) => {
+    await doLogin(data.phone.trim(), data.password.trim())
   }
 
   return (
@@ -92,9 +68,7 @@ export default function LoginPage() {
           backgroundImage: "url('https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=1920&q=80')",
         }}
       />
-      {/* Dark overlay — keeps text readable */}
       <div className="absolute inset-0 bg-[#0a1628]/80" />
-      {/* Subtle red vignette at bottom */}
       <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-red-950/30 to-transparent pointer-events-none" />
 
       <div className="relative z-10 w-full max-w-[420px]">
@@ -169,38 +143,12 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Quick login — bypasses form fields entirely, ignores browser autofill */}
+          {/* Quick login hint */}
           <div className="mt-5 rounded-lg bg-white/[0.03] border border-white/8 p-3.5">
-            <p className="text-[11px] text-slate-500 font-medium mb-3 uppercase tracking-wider">快速测试登录</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                disabled={isLoading}
-                onClick={() => quickLogin('13800138001')}
-                className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 hover:border-red-500/40 px-3 py-2.5 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <LogIn size={13} className="text-red-400 flex-shrink-0" />
-                <div>
-                  <div className="text-[12px] text-white font-medium">管理员</div>
-                  <div className="text-[10px] text-slate-500 font-mono mt-0.5">...138001</div>
-                </div>
-              </button>
-              <button
-                type="button"
-                disabled={isLoading}
-                onClick={() => quickLogin('13800138002')}
-                className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 hover:border-slate-500/40 px-3 py-2.5 transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <LogIn size={13} className="text-slate-400 flex-shrink-0" />
-                <div>
-                  <div className="text-[12px] text-white font-medium">普通用户</div>
-                  <div className="text-[10px] text-slate-500 font-mono mt-0.5">...138002</div>
-                </div>
-              </button>
-            </div>
-            <p className="text-[10px] text-slate-600 mt-2.5 text-center">点击按钮一键登录，无需填写表单</p>
+            <p className="text-[11px] text-slate-500 font-medium mb-1 uppercase tracking-wider">测试账号</p>
+            <p className="text-[12px] text-slate-400">手机号：<span className="font-mono text-slate-300">13800138001</span></p>
+            <p className="text-[12px] text-slate-400 mt-0.5">密码：<span className="font-mono text-slate-300">Admin@123456</span></p>
           </div>
-
         </div>
       </div>
     </div>

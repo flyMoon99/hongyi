@@ -1,4 +1,5 @@
 export type Gender = 'MALE' | 'FEMALE'
+export type UserRole = 'ADMIN' | 'DEPT_MANAGER' | 'STAFF'
 
 export interface Employee {
   id: string
@@ -7,9 +8,22 @@ export interface Employee {
   phone: string
   avatar?: string | null
   email?: string | null
-  isAdmin: boolean
+  role: UserRole
+  isDeleted: boolean
   createdAt: string
   updatedAt: string
+}
+
+export interface EmployeeLogItem {
+  id: string
+  action: string
+  detail?: string | null
+  createdAt: string
+  operator: { id: string; name: string }
+}
+
+export interface EmployeeWithLogs extends Employee {
+  employeeLogs: EmployeeLogItem[]
 }
 
 export interface CreateEmployeeDto {
@@ -19,7 +33,7 @@ export interface CreateEmployeeDto {
   password: string
   avatar?: string
   email?: string
-  isAdmin?: boolean
+  role?: UserRole
 }
 
 export interface UpdateEmployeeDto {
@@ -29,5 +43,5 @@ export interface UpdateEmployeeDto {
   password?: string
   avatar?: string
   email?: string
-  isAdmin?: boolean
+  role?: UserRole
 }

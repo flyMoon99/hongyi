@@ -89,6 +89,7 @@ export default function InspectionsPage() {
           </div>
         </CardHeader>
         <CardContent className="p-0">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50">
@@ -172,6 +173,7 @@ export default function InspectionsPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 

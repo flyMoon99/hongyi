@@ -1,5 +1,5 @@
-import { IsString, IsNotEmpty, IsEnum, IsOptional, IsBoolean, IsEmail } from 'class-validator'
-import { Gender } from '@prisma/client'
+import { IsString, IsNotEmpty, IsEnum, IsOptional, IsEmail } from 'class-validator'
+import { Gender, UserRole } from '@prisma/client'
 
 export class CreateEmployeeDto {
   @IsString()
@@ -26,6 +26,6 @@ export class CreateEmployeeDto {
   email?: string
 
   @IsOptional()
-  @IsBoolean()
-  isAdmin?: boolean
+  @IsEnum(UserRole, { message: '角色值无效' })
+  role?: UserRole
 }

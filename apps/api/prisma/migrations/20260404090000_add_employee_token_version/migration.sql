@@ -1,0 +1,2 @@
+ALTER TABLE "employees"
+ADD COLUMN "tokenVersion" INTEGER NOT NULL DEFAULT 0;

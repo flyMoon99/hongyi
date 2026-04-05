@@ -3,7 +3,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { User, LogOut, Settings, ChevronRight } from 'lucide-react'
+import { User, LogOut, ChevronRight, Menu } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/contexts/auth-context'
+import { ROLE_LABELS } from '@/types'
 
 const breadcrumbMap: Record<string, string> = {
   '/': '仪表盘',
@@ -38,7 +39,11 @@ function getBreadcrumbs(pathname: string) {
   return crumbs
 }
 
-export function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void
+}
+
+export function Header({ onMenuClick }: HeaderProps) {
   const { user, logout } = useAuth()
   const pathname = usePathname()
   const breadcrumbs = getBreadcrumbs(pathname)
@@ -55,28 +60,40 @@ export function Header() {
       </Avatar>
       <div className="text-left hidden sm:block">
         <p className="text-sm font-medium text-slate-800 leading-tight">{user?.name || '用户'}</p>
-        <p className="text-xs text-slate-500 leading-tight">{user?.isAdmin ? '管理员' : '普通用户'}</p>
+        <p className="text-xs text-slate-500 leading-tight">{user?.role ? ROLE_LABELS[user.role] : '用户'}</p>
       </div>
     </>
   )
 
   return (
-    <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-30 shadow-sm">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-sm">
-        {breadcrumbs.map((crumb, i) => (
-          <span key={crumb.href} className="flex items-center gap-1.5">
-            {i > 0 && <ChevronRight size={14} className="text-slate-400" />}
-            {i === breadcrumbs.length - 1 ? (
-              <span className="text-slate-800 font-medium">{crumb.label}</span>
-            ) : (
-              <Link href={crumb.href} className="text-slate-500 hover:text-slate-700 transition-colors">
-                {crumb.label}
-              </Link>
-            )}
-          </span>
-        ))}
-      </nav>
+    <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30 shadow-sm shrink-0">
+      <div className="flex items-center gap-2 min-w-0">
+        {/* Hamburger — mobile only */}
+        <button
+          type="button"
+          onClick={onMenuClick}
+          className="lg:hidden p-2 -ml-1 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
+          aria-label="打开菜单"
+        >
+          <Menu size={20} />
+        </button>
+
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-1 text-sm min-w-0">
+          {breadcrumbs.map((crumb, i) => (
+            <span key={crumb.href} className="flex items-center gap-1 min-w-0">
+              {i > 0 && <ChevronRight size={14} className="text-slate-400 shrink-0" />}
+              {i === breadcrumbs.length - 1 ? (
+                <span className="text-slate-800 font-medium truncate">{crumb.label}</span>
+              ) : (
+                <Link href={crumb.href} className="text-slate-500 hover:text-slate-700 transition-colors truncate hidden sm:block">
+                  {crumb.label}
+                </Link>
+              )}
+            </span>
+          ))}
+        </nav>
+      </div>
 
       {/* User Menu: Radix useId can mismatch SSR vs first client paint; mount after hydration */}
       {userMenuMounted ? (
@@ -84,7 +101,7 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors"
+              className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 hover:bg-slate-50 transition-colors shrink-0"
             >
               {userTriggerInner}
             </button>
@@ -111,7 +128,7 @@ export function Header() {
           </DropdownMenuContent>
         </DropdownMenu>
       ) : (
-        <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
+        <div className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 shrink-0">
           {userTriggerInner}
         </div>
       )}

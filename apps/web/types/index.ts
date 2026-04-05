@@ -1,4 +1,5 @@
 export type Gender = 'MALE' | 'FEMALE'
+export type UserRole = 'ADMIN' | 'DEPT_MANAGER' | 'STAFF'
 export type InspectionFrequency = 'QUARTERLY' | 'MONTHLY'
 export type ExperimentFrequency = 'QUARTERLY' | 'MONTHLY'
 
@@ -9,9 +10,38 @@ export interface Employee {
   phone: string
   avatar?: string | null
   email?: string | null
-  isAdmin: boolean
+  role: UserRole
+  isDeleted: boolean
   createdAt: string
   updatedAt: string
+}
+
+export interface EmployeeLogItem {
+  id: string
+  action: string
+  detail?: string | null
+  createdAt: string
+  operator: { id: string; name: string }
+}
+
+export interface EmployeeWithLogs extends Employee {
+  employeeLogs: EmployeeLogItem[]
+}
+
+export interface EmployeeFormValues {
+  name: string
+  gender: Gender
+  phone: string
+  password?: string
+  email?: string
+  role: UserRole
+}
+
+export interface EmployeesListResponse {
+  items: Employee[]
+  total: number
+  page: number
+  pageSize: number
 }
 
 export interface Customer {
@@ -91,6 +121,31 @@ export interface CurrentUser {
   phone: string
   email?: string | null
   avatar?: string | null
-  isAdmin: boolean
+  role: UserRole
   gender: Gender
+}
+
+export function canManageEmployees(role?: UserRole): boolean {
+  return role === 'ADMIN' || role === 'DEPT_MANAGER'
+}
+
+export function canAssignEmployeeRole(currentRole: UserRole | undefined, targetRole: UserRole): boolean {
+  if (currentRole === 'ADMIN') return true
+  if (currentRole === 'DEPT_MANAGER') return targetRole === 'STAFF'
+  return false
+}
+
+export function canManageEmployeeRecord(
+  currentRole: UserRole | undefined,
+  targetRole: UserRole,
+): boolean {
+  if (currentRole === 'ADMIN') return true
+  if (currentRole === 'DEPT_MANAGER') return targetRole === 'STAFF'
+  return false
+}
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  ADMIN: '管理员',
+  DEPT_MANAGER: '部门负责人',
+  STAFF: '职员',
 }

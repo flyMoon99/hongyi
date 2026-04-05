@@ -3,50 +3,45 @@ import { JwtService } from '@nestjs/jwt'
 import * as bcrypt from 'bcryptjs'
 import { PrismaService } from '../prisma/prisma.service'
 import { LoginDto } from './dto/login.dto'
-import * as svgCaptcha from 'svg-captcha'
+import { UpdateMeDto } from './dto/update-me.dto'
+import { ChangePasswordDto } from './dto/change-password.dto'
+
+const SAFE_SELECT = {
+  id: true,
+  name: true,
+  gender: true,
+  phone: true,
+  avatar: true,
+  email: true,
+  role: true,
+  createdAt: true,
+  updatedAt: true,
+}
 
 @Injectable()
 export class AuthService {
-  private captchaStore = new Map<string, { text: string; expires: number }>()
-
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
   ) {}
 
-  generateCaptcha(sessionId: string) {
-    const captcha = svgCaptcha.create({
-      size: 4,
-      noise: 2,
-      color: true,
-      background: '#f0f0f0',
-    })
-    this.captchaStore.set(sessionId, {
-      text: captcha.text.toLowerCase(),
-      expires: Date.now() + 5 * 60 * 1000,
-    })
-    return { svg: captcha.data, sessionId }
-  }
-
   async login(dto: LoginDto) {
-    const stored = this.captchaStore.get(dto.sessionId)
-    if (!stored || stored.expires < Date.now()) {
-      throw new UnauthorizedException('验证码已过期')
-    }
-    if (stored.text !== dto.captcha.toLowerCase()) {
-      throw new UnauthorizedException('验证码错误')
-    }
-    this.captchaStore.delete(dto.sessionId)
-
     const employee = await this.prisma.employee.findUnique({
       where: { phone: dto.phone },
     })
-    if (!employee) throw new UnauthorizedException('手机号或密码错误')
+    if (!employee || employee.isDeleted) {
+      throw new UnauthorizedException('手机号或密码错误')
+    }
 
     const valid = await bcrypt.compare(dto.password, employee.password)
     if (!valid) throw new UnauthorizedException('手机号或密码错误')
 
-    const payload = { sub: employee.id, phone: employee.phone, isAdmin: employee.isAdmin }
+    const payload = {
+      sub: employee.id,
+      phone: employee.phone,
+      role: employee.role,
+      tokenVersion: employee.tokenVersion,
+    }
     const accessToken = this.jwt.sign(payload)
 
     return {
@@ -57,9 +52,48 @@ export class AuthService {
         phone: employee.phone,
         email: employee.email,
         avatar: employee.avatar,
-        isAdmin: employee.isAdmin,
+        role: employee.role,
         gender: employee.gender,
       },
     }
+  }
+
+  async getMe(userId: string) {
+    const employee = await this.prisma.employee.findUnique({
+      where: { id: userId },
+      select: SAFE_SELECT,
+    })
+    if (!employee) throw new UnauthorizedException('用户不存在')
+    return employee
+  }
+
+  async updateMe(userId: string, dto: UpdateMeDto) {
+    return this.prisma.employee.update({
+      where: { id: userId },
+      data: dto,
+      select: SAFE_SELECT,
+    })
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const hashed = await bcrypt.hash(dto.newPassword, 10)
+    await this.prisma.employee.update({
+      where: { id: userId },
+      data: {
+        password: hashed,
+        tokenVersion: { increment: 1 },
+      },
+    })
+
+    await this.prisma.employeeLog.create({
+      data: {
+        employeeId: userId,
+        operatorId: userId,
+        action: '修改密码',
+        detail: '用户自行修改登录密码',
+      },
+    })
+
+    return { message: '密码修改成功' }
   }
 }

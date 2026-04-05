@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { Employee } from '@/types'
+import { canAssignEmployeeRole } from '@/types'
+import type { Employee, EmployeeFormValues, UserRole } from '@/types'
 
 const schema = z.object({
   name: z.string().min(1, '姓名不能为空'),
@@ -17,7 +18,7 @@ const schema = z.object({
   phone: z.string().min(11, '手机号格式不正确'),
   password: z.string().min(6, '密码至少6位').optional().or(z.literal('')),
   email: z.string().email('邮箱格式不正确').optional().or(z.literal('')),
-  isAdmin: z.boolean(),
+  role: z.enum(['ADMIN', 'DEPT_MANAGER', 'STAFF']),
 })
 
 type FormData = z.infer<typeof schema>
@@ -25,12 +26,19 @@ type FormData = z.infer<typeof schema>
 interface Props {
   open: boolean
   onClose: () => void
-  onSave: (data: FormData) => Promise<void>
+  onSave: (data: EmployeeFormValues) => Promise<void>
   employee?: Employee | null
+  currentUserRole?: UserRole
   isSaving?: boolean
 }
 
-export function EmployeeForm({ open, onClose, onSave, employee, isSaving }: Props) {
+const roleOptions: Array<{ value: FormData['role']; label: string }> = [
+  { value: 'ADMIN', label: '管理员' },
+  { value: 'DEPT_MANAGER', label: '部门负责人' },
+  { value: 'STAFF', label: '职员' },
+]
+
+export function EmployeeForm({ open, onClose, onSave, employee, currentUserRole, isSaving }: Props) {
   const isEdit = !!employee
   const {
     register,
@@ -41,7 +49,7 @@ export function EmployeeForm({ open, onClose, onSave, employee, isSaving }: Prop
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { gender: 'MALE', isAdmin: false },
+    defaultValues: { gender: 'MALE', role: 'STAFF' },
   })
 
   useEffect(() => {
@@ -52,17 +60,18 @@ export function EmployeeForm({ open, onClose, onSave, employee, isSaving }: Prop
           gender: employee.gender,
           phone: employee.phone,
           email: employee.email || '',
-          isAdmin: employee.isAdmin,
+          role: employee.role,
           password: '',
         })
       } else {
-        reset({ name: '', gender: 'MALE', phone: '', email: '', isAdmin: false, password: '' })
+        reset({ name: '', gender: 'MALE', phone: '', email: '', role: 'STAFF', password: '' })
       }
     }
   }, [open, employee, reset])
 
   const gender = watch('gender')
-  const isAdmin = watch('isAdmin')
+  const role = watch('role')
+  const availableRoles = roleOptions.filter((item) => canAssignEmployeeRole(currentUserRole, item.value))
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -71,7 +80,7 @@ export function EmployeeForm({ open, onClose, onSave, employee, isSaving }: Prop
           <DialogTitle>{isEdit ? '编辑员工' : '新增员工'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSave)} className="space-y-4 py-2">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>姓名 <span className="text-red-500">*</span></Label>
               <Input {...register('name')} placeholder="请输入姓名" />
@@ -96,7 +105,10 @@ export function EmployeeForm({ open, onClose, onSave, employee, isSaving }: Prop
           </div>
 
           <div className="space-y-1.5">
-            <Label>{isEdit ? '新密码（不修改则留空）' : '密码'} {!isEdit && <span className="text-red-500">*</span>}</Label>
+            <Label>
+              {isEdit ? '新密码（不修改则留空）' : '密码'}
+              {!isEdit && <span className="text-red-500"> *</span>}
+            </Label>
             <Input {...register('password')} type="password" placeholder={isEdit ? '不修改请留空' : '请设置登录密码'} />
             {errors.password && <p className="text-red-500 text-xs">{errors.password.message}</p>}
           </div>
@@ -108,22 +120,20 @@ export function EmployeeForm({ open, onClose, onSave, employee, isSaving }: Prop
           </div>
 
           <div className="space-y-1.5">
-            <Label>角色</Label>
-            <Select
-              value={isAdmin ? 'true' : 'false'}
-              onValueChange={(v) => setValue('isAdmin', v === 'true')}
-            >
+            <Label>角色 <span className="text-red-500">*</span></Label>
+            <Select value={role} onValueChange={(v) => setValue('role', v as FormData['role'])}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="false">普通用户</SelectItem>
-                <SelectItem value="true">管理员</SelectItem>
+                {availableRoles.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={onClose}>取消</Button>
-            <Button type="submit" disabled={isSaving} className="bg-red-600 hover:bg-red-700">
+            <Button type="submit" disabled={isSaving} className="bg-red-600 hover:bg-red-700 text-white">
               {isSaving ? (
                 <span className="flex items-center gap-2">
                   <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
