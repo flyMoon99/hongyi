@@ -51,6 +51,8 @@ export interface Customer {
   contactPerson: string
   contactInfo: string
   lastPatrolTime?: string | null
+  isDeleted?: boolean
+  deletedAt?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -61,8 +63,47 @@ export interface CustomerLog {
   action: string
   detail?: string | null
   operatorId: string
+  operator?: { id: string; name: string }
   operatorName?: string
   createdAt: string
+}
+
+export interface CustomerWithDetails extends Customer {
+  inspections: Array<{
+    id: string
+    customerId: string
+    frequency: InspectionFrequency
+    powerEquipment: string
+    lastInspectionDate?: string | null
+    nextInspectionDate?: string | null
+    safetyTools?: string | null
+    contactPerson: string
+    contactInfo: string
+    createdAt: string
+    updatedAt: string
+  }>
+  experiments: Array<{
+    id: string
+    customerId: string
+    frequency: ExperimentFrequency
+    powerEquipment: string
+    lastTestDate?: string | null
+    nextTestDate?: string | null
+    safetyTools?: string | null
+    contactPerson: string
+    contactInfo: string
+    createdAt: string
+    updatedAt: string
+  }>
+  logs: Array<{
+    id: string
+    customerId: string
+    action: string
+    detail?: string | null
+    operatorId: string
+    operator: { id: string; name: string }
+    createdAt: string
+  }>
 }
 
 export interface Inspection {

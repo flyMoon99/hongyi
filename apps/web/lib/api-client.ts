@@ -30,7 +30,8 @@ raw.interceptors.request.use((config) => {
 raw.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthRequest = error.config?.url?.includes('/auth/login')
+    if (error.response?.status === 401 && !isAuthRequest) {
       localStorage.removeItem('hongyi_user')
       localStorage.removeItem('hongyi_token')
       window.location.href = '/login'

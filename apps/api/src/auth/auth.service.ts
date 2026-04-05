@@ -30,11 +30,11 @@ export class AuthService {
       where: { phone: dto.phone },
     })
     if (!employee || employee.isDeleted) {
-      throw new UnauthorizedException('手机号或密码错误')
+      throw new UnauthorizedException('该手机号未注册，请确认后重试')
     }
 
     const valid = await bcrypt.compare(dto.password, employee.password)
-    if (!valid) throw new UnauthorizedException('手机号或密码错误')
+    if (!valid) throw new UnauthorizedException('密码错误，请重新输入')
 
     const payload = {
       sub: employee.id,
@@ -76,6 +76,12 @@ export class AuthService {
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto) {
+    const employee = await this.prisma.employee.findUnique({ where: { id: userId } })
+    if (!employee) throw new UnauthorizedException('用户不存在')
+
+    const valid = await bcrypt.compare(dto.currentPassword, employee.password)
+    if (!valid) throw new UnauthorizedException('当前密码错误')
+
     const hashed = await bcrypt.hash(dto.newPassword, 10)
     await this.prisma.employee.update({
       where: { id: userId },

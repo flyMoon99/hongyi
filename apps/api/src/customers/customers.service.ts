@@ -7,10 +7,18 @@ import { UpdateCustomerDto } from './dto/update-customer.dto'
 export class CustomersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(page = 1, pageSize = 10, search?: string) {
-    const where = search
-      ? { OR: [{ companyName: { contains: search } }, { contactPerson: { contains: search } }] }
-      : {}
+  async findAll(
+    page = 1,
+    pageSize = 10,
+    companyName?: string,
+    contactPerson?: string,
+    contactInfo?: string,
+  ) {
+    const where: any = { isDeleted: false }
+    if (companyName) where.companyName = { contains: companyName }
+    if (contactPerson) where.contactPerson = { contains: contactPerson }
+    if (contactInfo) where.contactInfo = { contains: contactInfo }
+
     const [items, total] = await Promise.all([
       this.prisma.customer.findMany({
         where,
@@ -24,8 +32,8 @@ export class CustomersService {
   }
 
   async findOne(id: string) {
-    const customer = await this.prisma.customer.findUnique({
-      where: { id },
+    const customer = await this.prisma.customer.findFirst({
+      where: { id, isDeleted: false },
       include: {
         inspections: { orderBy: { lastInspectionDate: 'desc' }, take: 5 },
         experiments: { orderBy: { lastTestDate: 'desc' }, take: 5 },
@@ -48,7 +56,12 @@ export class CustomersService {
       },
     })
     await this.prisma.customerLog.create({
-      data: { customerId: customer.id, action: '创建客户', detail: `创建客户：${customer.companyName}`, operatorId },
+      data: {
+        customerId: customer.id,
+        action: '创建客户',
+        detail: `创建客户：${customer.companyName}`,
+        operatorId,
+      },
     })
     return customer
   }
@@ -63,7 +76,12 @@ export class CustomersService {
       },
     })
     await this.prisma.customerLog.create({
-      data: { customerId: id, action: '更新客户', detail: `更新客户信息`, operatorId },
+      data: {
+        customerId: id,
+        action: '更新客户',
+        detail: `更新客户信息：${customer.companyName}`,
+        operatorId,
+      },
     })
     return customer
   }
@@ -71,9 +89,17 @@ export class CustomersService {
   async remove(id: string, operatorId: string) {
     const customer = await this.findOne(id)
     await this.prisma.customerLog.create({
-      data: { customerId: id, action: '删除客户', detail: `删除客户：${customer.companyName}`, operatorId },
+      data: {
+        customerId: id,
+        action: '删除客户',
+        detail: `删除客户：${customer.companyName}`,
+        operatorId,
+      },
     })
-    await this.prisma.customer.delete({ where: { id } })
+    await this.prisma.customer.update({
+      where: { id },
+      data: { isDeleted: true, deletedAt: new Date() },
+    })
     return { message: '删除成功' }
   }
 

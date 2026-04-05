@@ -23,10 +23,19 @@ export const SEEDS = {
     name: '测试职员',
     password: 'Staff@123456',
   },
+  /** Pre-seeded customer for read / update / delete tests */
+  customer: {
+    id: 'test-customer-001',
+    companyName: '测试电力公司',
+    contactPerson: '张三',
+    contactInfo: '13011110001',
+  },
 }
 
 export async function buildSeed(prisma: PrismaClient): Promise<void> {
-  // Clean in dependency order
+  // Clean in dependency order (customers first so FK constraints pass)
+  await prisma.customerLog.deleteMany()
+  await prisma.customer.deleteMany()
   await prisma.employeeLog.deleteMany()
   await prisma.employee.deleteMany()
 
@@ -62,5 +71,15 @@ export async function buildSeed(prisma: PrismaClient): Promise<void> {
         isDeleted: false,
       },
     ],
+  })
+
+  await prisma.customer.create({
+    data: {
+      id: SEEDS.customer.id,
+      companyName: SEEDS.customer.companyName,
+      contactPerson: SEEDS.customer.contactPerson,
+      contactInfo: SEEDS.customer.contactInfo,
+      isDeleted: false,
+    },
   })
 }

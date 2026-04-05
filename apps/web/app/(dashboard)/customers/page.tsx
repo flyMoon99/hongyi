@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Plus, Search, Pencil, Trash2, Eye, Building2, Phone, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
@@ -15,55 +15,104 @@ import {
 } from '@/components/ui/alert-dialog'
 import { CustomerForm } from '@/components/customers/customer-form'
 import { useAuth } from '@/contexts/auth-context'
-import { mockCustomers } from '@/lib/mock-data'
-import { formatDate, formatDateTime } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
+import apiClient from '@/lib/api-client'
 import type { Customer } from '@/types'
+
+interface CustomersListResponse {
+  items: Customer[]
+  total: number
+  page: number
+  pageSize: number
+}
 
 export default function CustomersPage() {
   const { user } = useAuth()
-  const [customers, setCustomers] = useState<Customer[]>(mockCustomers)
-  const [search, setSearch] = useState('')
+  const canManage = user?.role === 'ADMIN' || user?.role === 'DEPT_MANAGER'
+
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const pageSize = 20
+  const [isLoading, setIsLoading] = useState(true)
+
+  const [companyName, setCompanyName] = useState('')
+  const [contactPerson, setContactPerson] = useState('')
+  const [contactInfo, setContactInfo] = useState('')
+  const [searchTrigger, setSearchTrigger] = useState(0)
+
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Customer | null>(null)
   const [deleting, setDeleting] = useState<Customer | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
-  const filtered = customers.filter(
-    (c) => c.companyName.includes(search) || c.contactPerson.includes(search) || c.contactInfo.includes(search),
-  )
+  const fetchCustomers = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const params: Record<string, string | number | undefined> = {
+        page,
+        pageSize,
+        companyName: companyName || undefined,
+        contactPerson: contactPerson || undefined,
+        contactInfo: contactInfo || undefined,
+      }
+      const data = await apiClient.get<CustomersListResponse>('/customers', { params })
+      setCustomers(data.items)
+      setTotal(data.total)
+    } catch (err: unknown) {
+      toast.error(typeof err === 'string' ? err : '加载客户列表失败')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [page, pageSize, companyName, contactPerson, contactInfo, searchTrigger]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { fetchCustomers() }, [fetchCustomers])
+
+  const handleSearch = () => {
+    setPage(1)
+    setSearchTrigger((n) => n + 1)
+  }
+
+  const handleReset = () => {
+    setCompanyName('')
+    setContactPerson('')
+    setContactInfo('')
+    setPage(1)
+    setSearchTrigger((n) => n + 1)
+  }
 
   const handleSave = async (data: any) => {
     setIsSaving(true)
-    await new Promise((r) => setTimeout(r, 600))
-    if (editing) {
-      setCustomers((prev) =>
-        prev.map((c) =>
-          c.id === editing.id
-            ? { ...c, ...data, lastPatrolTime: data.lastPatrolTime || null, updatedAt: new Date().toISOString() }
-            : c,
-        ),
-      )
-      toast.success('客户信息已更新')
-    } else {
-      const newCustomer: Customer = {
-        id: `cust-${Date.now()}`,
-        ...data,
-        lastPatrolTime: data.lastPatrolTime || null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+    const payload = Object.fromEntries(
+      Object.entries(data).filter(([, v]) => v !== '' && v !== undefined && v !== null)
+    )
+    try {
+      if (editing) {
+        await apiClient.put(`/customers/${editing.id}`, payload)
+        toast.success('客户信息已更新')
+      } else {
+        await apiClient.post('/customers', payload)
+        toast.success('客户添加成功')
       }
-      setCustomers((prev) => [newCustomer, ...prev])
-      toast.success('客户添加成功')
+      setFormOpen(false)
+      fetchCustomers()
+    } catch (err: unknown) {
+      toast.error(typeof err === 'string' ? err : '操作失败')
+    } finally {
+      setIsSaving(false)
     }
-    setIsSaving(false)
-    setFormOpen(false)
   }
 
   const handleDelete = async () => {
     if (!deleting) return
-    setCustomers((prev) => prev.filter((c) => c.id !== deleting.id))
-    toast.success('客户已删除')
-    setDeleting(null)
+    try {
+      await apiClient.delete(`/customers/${deleting.id}`)
+      toast.success('客户已删除')
+      setDeleting(null)
+      fetchCustomers()
+    } catch (err: unknown) {
+      toast.error(typeof err === 'string' ? err : '删除失败')
+    }
   }
 
   return (
@@ -71,124 +120,207 @@ export default function CustomersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-800">客户管理</h1>
-          <p className="text-sm text-slate-500 mt-0.5">共 {customers.length} 家客户</p>
+          <p className="text-sm text-slate-500 mt-0.5">共 {total} 家客户</p>
         </div>
-        <Button
-          onClick={() => { setEditing(null); setFormOpen(true) }}
-          className="bg-red-600 hover:bg-red-700"
-        >
-          <Plus size={16} /> 新增客户
-        </Button>
+        {canManage && (
+          <Button
+            onClick={() => { setEditing(null); setFormOpen(true) }}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            <Plus size={16} /> 新增客户
+          </Button>
+        )}
       </div>
 
       <Card>
         <CardHeader className="pb-3">
-          <div className="relative max-w-sm">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索企业名称、联系人..."
-              className="pl-9"
-            />
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="relative flex-1 min-w-[140px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="企业名称"
+                className="pl-8 h-9"
+              />
+            </div>
+            <div className="relative flex-1 min-w-[120px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={contactPerson}
+                onChange={(e) => setContactPerson(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="联系人"
+                className="pl-8 h-9"
+              />
+            </div>
+            <div className="relative flex-1 min-w-[140px]">
+              <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={contactInfo}
+                onChange={(e) => setContactInfo(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                placeholder="联系方式"
+                className="pl-8 h-9"
+              />
+            </div>
+            <Button size="sm" onClick={handleSearch} className="bg-red-600 hover:bg-red-700 h-9">
+              搜索
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleReset} className="h-9">
+              重置
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-slate-50">
-                <TableHead>企业名称</TableHead>
-                <TableHead>联系人</TableHead>
-                <TableHead>联系方式</TableHead>
-                <TableHead>最近巡视</TableHead>
-                <TableHead>创建时间</TableHead>
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-slate-400 py-12">
-                    暂无客户数据
-                  </TableCell>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50">
+                  <TableHead>企业名称</TableHead>
+                  <TableHead>联系人</TableHead>
+                  <TableHead>联系方式</TableHead>
+                  <TableHead>最近巡视</TableHead>
+                  <TableHead>创建时间</TableHead>
+                  <TableHead className="text-right">操作</TableHead>
                 </TableRow>
-              ) : (
-                filtered.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
-                          <Building2 size={14} className="text-blue-500" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-slate-800">{c.companyName}</p>
-                          {c.projectOverview && (
-                            <p className="text-xs text-slate-400 truncate max-w-[200px]">{c.projectOverview}</p>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-slate-600 text-sm">{c.contactPerson}</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-slate-600 text-sm">
-                        <Phone size={12} className="text-slate-400" />
-                        {c.contactInfo}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-slate-500 text-sm">
-                        <Calendar size={12} className="text-slate-400" />
-                        {formatDate(c.lastPatrolTime) || '-'}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-slate-500 text-sm">{formatDate(c.createdAt)}</span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="sm" asChild className="h-8 px-2">
-                          <Link href={`/customers/${c.id}`}>
-                            <Eye size={14} className="text-slate-500" />
-                          </Link>
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => { setEditing(c); setFormOpen(true) }} className="h-8 px-2">
-                          <Pencil size={14} className="text-slate-500" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDeleting(c)}
-                          className="h-8 px-2 hover:text-red-600"
-                        >
-                          <Trash2 size={14} className="text-slate-500" />
-                        </Button>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-slate-400 py-12">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="h-4 w-4 rounded-full border-2 border-red-500 border-t-transparent animate-spin" />
+                        加载中...
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : customers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-slate-400 py-12">
+                      暂无客户数据
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  customers.map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                            <Building2 size={14} className="text-blue-500" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-slate-800">{c.companyName}</p>
+                            {c.projectOverview && (
+                              <p className="text-xs text-slate-400 truncate max-w-[200px]">{c.projectOverview}</p>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-slate-600 text-sm">{c.contactPerson}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-slate-600 text-sm">
+                          <Phone size={12} className="text-slate-400" />
+                          {c.contactInfo}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1 text-slate-500 text-sm">
+                          <Calendar size={12} className="text-slate-400" />
+                          {formatDate(c.lastPatrolTime) || '-'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-slate-500 text-sm">{formatDate(c.createdAt)}</span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" asChild className="h-8 px-2">
+                            <Link href={`/customers/detail?id=${encodeURIComponent(c.id)}`}>
+                              <Eye size={14} className="text-slate-500" />
+                            </Link>
+                          </Button>
+                          {canManage && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => { setEditing(c); setFormOpen(true) }}
+                                className="h-8 px-2"
+                              >
+                                <Pencil size={14} className="text-slate-500" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setDeleting(c)}
+                                className="h-8 px-2 hover:text-red-600"
+                              >
+                                <Trash2 size={14} className="text-slate-500" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
+
+          {total > pageSize && (
+            <div className="flex items-center justify-between px-4 py-3 border-t">
+              <span className="text-sm text-slate-500">共 {total} 条</span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  上一页
+                </Button>
+                <span className="text-sm text-slate-500 self-center">第 {page} 页</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page * pageSize >= total}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  下一页
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      <CustomerForm open={formOpen} onClose={() => setFormOpen(false)} onSave={handleSave} customer={editing} isSaving={isSaving} />
+      <CustomerForm
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        onSave={handleSave}
+        customer={editing}
+        isSaving={isSaving}
+      />
 
       <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>确认删除</AlertDialogTitle>
             <AlertDialogDescription>
-              确定要删除客户 <strong>{deleting?.companyName}</strong> 吗？相关巡检和试验记录也将一并删除，此操作不可撤销。
+              确定要删除客户 <strong>{deleting?.companyName}</strong> 吗？
+              相关巡检和试验记录也将一并删除，删除后不可恢复。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">确认删除</AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              确认删除
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

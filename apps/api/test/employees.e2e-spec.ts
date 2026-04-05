@@ -124,14 +124,23 @@ describe('Employees API (e2e)', () => {
       .expect(409)
   })
 
-  // ── 8. DEPT_MANAGER can update employee role ───────────────────────────
-  it('PUT /employees/:id → 200 by DEPT_MANAGER, role updated', async () => {
+  // ── 8. DEPT_MANAGER can update STAFF employee name ────────────────────
+  it('PUT /employees/:id → 200 by DEPT_MANAGER, name updated', async () => {
     const res = await request(app.getHttpServer())
       .put(`/api/employees/${createdId}`)
       .set('Authorization', `Bearer ${deptToken}`)
-      .send({ role: 'DEPT_MANAGER' })
+      .send({ name: '部门负责人已修改' })
       .expect(200)
-    expect(res.body.role).toBe('DEPT_MANAGER')
+    expect(res.body.name).toBe('部门负责人已修改')
+  })
+
+  // ── 8b. DEPT_MANAGER cannot assign DEPT_MANAGER role → 403 ────────────
+  it('PUT /employees/:id → 403 when DEPT_MANAGER tries to assign DEPT_MANAGER role', async () => {
+    await request(app.getHttpServer())
+      .put(`/api/employees/${createdId}`)
+      .set('Authorization', `Bearer ${deptToken}`)
+      .send({ role: 'DEPT_MANAGER' })
+      .expect(403)
   })
 
   // ── 9. ADMIN soft-delete ──────────────────────────────────────────────

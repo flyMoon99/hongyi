@@ -88,7 +88,12 @@ export function CustomerForm({ open, onClose, onSave, customer, isSaving }: Prop
 
           <div className="space-y-1.5">
             <Label>最近巡视时间</Label>
-            <Input {...register('lastPatrolTime')} type="date" />
+            <Input
+              {...register('lastPatrolTime')}
+              type="date"
+              className="cursor-pointer"
+              onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
+            />
           </div>
 
           <DialogFooter className="pt-2">

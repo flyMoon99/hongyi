@@ -5,8 +5,7 @@ import Image from 'next/image'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { toast } from 'sonner'
-import { Eye, EyeOff, Lock, Smartphone } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, Lock, Smartphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -25,6 +24,7 @@ export default function LoginPage() {
   const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [loginError, setLoginError] = useState<string | null>(null)
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -32,6 +32,7 @@ export default function LoginPage() {
 
   const doLogin = async (phone: string, password: string) => {
     setIsLoading(true)
+    setLoginError(null)
     try {
       const res = await apiClient.post('/auth/login', { phone, password }) as any
       const data = res.accessToken ? res : res.data
@@ -46,10 +47,9 @@ export default function LoginPage() {
         gender: emp.gender,
       }
       login(currentUser, data.accessToken)
-      toast.success(`欢迎回来，${currentUser.name}！`)
       window.location.replace('/')
     } catch (err: any) {
-      toast.error(typeof err === 'string' ? err : '手机号或密码错误')
+      setLoginError(typeof err === 'string' ? err : '手机号或密码错误，请重试')
     } finally {
       setIsLoading(false)
     }
@@ -95,7 +95,7 @@ export default function LoginPage() {
               <div className="relative">
                 <Smartphone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                 <Input
-                  {...register('phone')}
+                  {...register('phone', { onChange: () => setLoginError(null) })}
                   type="text"
                   inputMode="numeric"
                   autoComplete="new-password"
@@ -111,7 +111,7 @@ export default function LoginPage() {
               <div className="relative">
                 <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                 <Input
-                  {...register('password')}
+                  {...register('password', { onChange: () => setLoginError(null) })}
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   placeholder="请输入密码"
@@ -128,6 +128,13 @@ export default function LoginPage() {
               </div>
               {errors.password && <p className="text-red-400 text-xs">{errors.password.message}</p>}
             </div>
+
+            {loginError && (
+              <div className="flex items-start gap-2 rounded-lg bg-red-500/10 border border-red-500/30 px-3 py-2.5">
+                <AlertCircle size={15} className="mt-0.5 shrink-0 text-red-400" />
+                <p className="text-sm text-red-300">{loginError}</p>
+              </div>
+            )}
 
             <Button
               type="submit"

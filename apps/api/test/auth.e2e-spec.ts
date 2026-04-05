@@ -51,20 +51,22 @@ describe('Auth API (e2e)', () => {
     expect(res.body.employee.role).toBe('ADMIN')
   })
 
-  // ── 2. Wrong password ────────────────────────────────────────────────
-  it('POST /auth/login → 401 when password wrong', async () => {
-    await request(app.getHttpServer())
+  // ── 2. Wrong password → 401 + specific message ───────────────────────
+  it('POST /auth/login → 401 + "密码错误" message when password wrong', async () => {
+    const res = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({ phone: SEEDS.admin.phone, password: 'WrongPass!' })
       .expect(401)
+    expect(res.body.message).toBe('密码错误，请重新输入')
   })
 
-  // ── 3. Non-existent phone ─────────────────────────────────────────────
-  it('POST /auth/login → 401 when phone does not exist', async () => {
-    await request(app.getHttpServer())
+  // ── 3. Non-existent phone → 401 + specific message ────────────────────
+  it('POST /auth/login → 401 + "未注册" message when phone does not exist', async () => {
+    const res = await request(app.getHttpServer())
       .post('/api/auth/login')
       .send({ phone: '19999999999', password: 'Any@Pass' })
       .expect(401)
+    expect(res.body.message).toBe('该手机号未注册，请确认后重试')
   })
 
   // ── 4. GET /auth/me without token ────────────────────────────────────
