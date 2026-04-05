@@ -72,12 +72,16 @@ export default function EmployeesPage() {
 
   const handleSave = async (data: EmployeeFormValues) => {
     setIsSaving(true)
+    // Strip empty strings so optional fields (email, password) pass backend validation
+    const payload = Object.fromEntries(
+      Object.entries(data).filter(([, v]) => v !== '' && v !== undefined && v !== null)
+    )
     try {
       if (editing) {
-        await apiClient.put(`/employees/${editing.id}`, data)
+        await apiClient.put(`/employees/${editing.id}`, payload)
         toast.success('员工信息已更新')
       } else {
-        await apiClient.post('/employees', data)
+        await apiClient.post('/employees', payload)
         toast.success('员工添加成功')
       }
       setFormOpen(false)

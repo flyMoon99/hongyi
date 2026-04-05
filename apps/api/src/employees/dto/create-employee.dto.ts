@@ -1,4 +1,5 @@
 import { IsString, IsNotEmpty, IsEnum, IsOptional, IsEmail } from 'class-validator'
+import { Transform } from 'class-transformer'
 import { Gender, UserRole } from '@prisma/client'
 
 export class CreateEmployeeDto {
@@ -22,6 +23,7 @@ export class CreateEmployeeDto {
   avatar?: string
 
   @IsOptional()
+  @Transform(({ value }) => value === '' ? undefined : value)
   @IsEmail({}, { message: '邮箱格式不正确' })
   email?: string
 
