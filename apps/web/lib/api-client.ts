@@ -1,20 +1,33 @@
-import axios from 'axios'
+import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
 import { getToken } from '@/contexts/auth-context'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
-export const apiClient = axios.create({
+/** Axios instance whose response interceptor returns `response.data` (typed as T on get/post/...). */
+export type ApiClient = Omit<
+  AxiosInstance,
+  'get' | 'post' | 'put' | 'patch' | 'delete' | 'request'
+> & {
+  get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>
+  post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
+  put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
+  patch<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T>
+  delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>
+  request<T = unknown>(config: AxiosRequestConfig): Promise<T>
+}
+
+const raw = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
 })
 
-apiClient.interceptors.request.use((config) => {
+raw.interceptors.request.use((config) => {
   const token = getToken()
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-apiClient.interceptors.response.use(
+raw.interceptors.response.use(
   (response) => response.data,
   (error) => {
     if (error.response?.status === 401) {
@@ -26,4 +39,5 @@ apiClient.interceptors.response.use(
   },
 )
 
+export const apiClient = raw as ApiClient
 export default apiClient

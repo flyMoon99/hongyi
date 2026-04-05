@@ -209,7 +209,7 @@ export default function EmployeesPage() {
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button variant="ghost" size="sm" asChild className="h-8 px-2">
-                            <Link href={`/employees/${emp.id}`}>
+                            <Link href={`/employees/detail?id=${encodeURIComponent(emp.id)}`}>
                               <Eye size={14} className="text-slate-500" />
                             </Link>
                           </Button>

@@ -39,8 +39,9 @@ export default function EmployeeDetail({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    apiClient.get(`/employees/${id}`)
-      .then((data) => setEmployee(data as EmployeeWithLogs))
+    apiClient
+      .get<EmployeeWithLogs>(`/employees/${id}`)
+      .then((data) => setEmployee(data))
       .catch(() => setError('员工不存在或无权限查看'))
       .finally(() => setLoading(false))
   }, [id])
