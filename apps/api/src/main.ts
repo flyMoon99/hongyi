@@ -1,13 +1,14 @@
 import { NestFactory } from '@nestjs/core'
 import { ValidationPipe } from '@nestjs/common'
+import { json, urlencoded } from 'express'
 import { AppModule } from './app.module'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    bodyParser: true,
+    bodyParser: false,
   })
-  app.use(require('express').json({ limit: '5mb' }))
-  app.use(require('express').urlencoded({ limit: '5mb', extended: true }))
+  app.use(json({ limit: '5mb' }))
+  app.use(urlencoded({ limit: '5mb', extended: true }))
 
   const frontendOrigins = process.env.FRONTEND_ORIGIN
     ? process.env.FRONTEND_ORIGIN.split(',').map((o) => o.trim())
