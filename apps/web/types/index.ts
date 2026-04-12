@@ -110,6 +110,9 @@ export interface Inspection {
   id: string
   customerId: string
   customerName?: string
+  customer?: { id: string; companyName: string }
+  responsiblePersonId: string
+  responsiblePerson?: { id: string; name: string }
   frequency: InspectionFrequency
   powerEquipment: string
   lastInspectionDate?: string | null
@@ -117,6 +120,8 @@ export interface Inspection {
   safetyTools?: string | null
   contactPerson: string
   contactInfo: string
+  isDeleted: boolean
+  deletedAt?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -127,14 +132,29 @@ export interface InspectionLog {
   action: string
   detail?: string | null
   operatorId: string
+  operator?: { id: string; name: string }
   operatorName?: string
   createdAt: string
+}
+
+export interface InspectionWithLogs extends Inspection {
+  customer: { id: string; companyName: string }
+  logs: Array<{
+    id: string
+    action: string
+    detail?: string | null
+    createdAt: string
+    operator: { id: string; name: string }
+  }>
 }
 
 export interface Experiment {
   id: string
   customerId: string
   customerName?: string
+  customer?: { id: string; companyName: string }
+  responsiblePersonId: string
+  responsiblePerson?: { id: string; name: string }
   frequency: ExperimentFrequency
   powerEquipment: string
   lastTestDate?: string | null
@@ -142,6 +162,8 @@ export interface Experiment {
   safetyTools?: string | null
   contactPerson: string
   contactInfo: string
+  isDeleted: boolean
+  deletedAt?: string | null
   createdAt: string
   updatedAt: string
 }
@@ -152,8 +174,20 @@ export interface ExperimentLog {
   action: string
   detail?: string | null
   operatorId: string
+  operator?: { id: string; name: string }
   operatorName?: string
   createdAt: string
+}
+
+export interface ExperimentWithLogs extends Experiment {
+  customer: { id: string; companyName: string }
+  logs: Array<{
+    id: string
+    action: string
+    detail?: string | null
+    createdAt: string
+    operator: { id: string; name: string }
+  }>
 }
 
 export interface CurrentUser {

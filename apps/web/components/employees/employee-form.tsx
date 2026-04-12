@@ -75,7 +75,7 @@ export function EmployeeForm({ open, onClose, onSave, employee, currentUserRole,
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{isEdit ? '编辑员工' : '新增员工'}</DialogTitle>
         </DialogHeader>

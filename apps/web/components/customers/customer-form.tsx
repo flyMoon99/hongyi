@@ -52,7 +52,7 @@ export function CustomerForm({ open, onClose, onSave, customer, isSaving }: Prop
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{isEdit ? '编辑客户' : '新增客户'}</DialogTitle>
         </DialogHeader>

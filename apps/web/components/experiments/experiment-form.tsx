@@ -1,20 +1,26 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { DateInput } from '@/components/ui/date-input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { Experiment } from '@/types'
-import { mockCustomers } from '@/lib/mock-data'
+import { apiClient } from '@/lib/api-client'
+import type { Experiment, Customer, Employee } from '@/types'
 
 const schema = z.object({
   customerId: z.string().min(1, '请选择客户'),
-  frequency: z.enum(['QUARTERLY', 'MONTHLY']),
+  responsiblePersonId: z.string().min(1, '请选择负责人'),
+  frequency: z.string().refine(
+    (v): v is 'QUARTERLY' | 'MONTHLY' => v === 'QUARTERLY' || v === 'MONTHLY',
+    { message: '请选择试验频率' },
+  ),
   powerEquipment: z.string().min(1, '电力设备不能为空'),
   lastTestDate: z.string().optional().or(z.literal('')),
   nextTestDate: z.string().optional().or(z.literal('')),
@@ -35,16 +41,30 @@ interface Props {
 
 export function ExperimentForm({ open, onClose, onSave, experiment, isSaving }: Props) {
   const isEdit = !!experiment
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [employees, setEmployees] = useState<Employee[]>([])
+
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { frequency: 'QUARTERLY' },
+    defaultValues: {},
   })
+
+  useEffect(() => {
+    if (!open) return
+    apiClient.get<{ items: Customer[] }>('/customers?pageSize=200&isDeleted=false')
+      .then((res) => setCustomers(res.items ?? []))
+      .catch(() => setCustomers([]))
+    apiClient.get<{ items: Employee[] }>('/employees?pageSize=200')
+      .then((res) => setEmployees((res.items ?? []).filter((e) => e.role !== 'ADMIN')))
+      .catch(() => setEmployees([]))
+  }, [open])
 
   useEffect(() => {
     if (open) {
       if (experiment) {
         reset({
           customerId: experiment.customerId,
+          responsiblePersonId: experiment.responsiblePersonId,
           frequency: experiment.frequency,
           powerEquipment: experiment.powerEquipment,
           lastTestDate: experiment.lastTestDate ? experiment.lastTestDate.split('T')[0] : '',
@@ -54,17 +74,26 @@ export function ExperimentForm({ open, onClose, onSave, experiment, isSaving }: 
           contactInfo: experiment.contactInfo,
         })
       } else {
-        reset({ customerId: '', frequency: 'QUARTERLY', powerEquipment: '', safetyTools: '', contactPerson: '', contactInfo: '' })
+        reset({
+          customerId: '',
+          responsiblePersonId: '',
+          frequency: '' as 'QUARTERLY' | 'MONTHLY',
+          powerEquipment: '',
+          safetyTools: '',
+          contactPerson: '',
+          contactInfo: '',
+        })
       }
     }
   }, [open, experiment, reset])
 
   const frequency = watch('frequency')
   const customerId = watch('customerId')
+  const responsiblePersonId = watch('responsiblePersonId')
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{isEdit ? '编辑试验' : '新增试验'}</DialogTitle>
         </DialogHeader>
@@ -75,7 +104,7 @@ export function ExperimentForm({ open, onClose, onSave, experiment, isSaving }: 
               <Select value={customerId} onValueChange={(v) => setValue('customerId', v)}>
                 <SelectTrigger><SelectValue placeholder="请选择客户" /></SelectTrigger>
                 <SelectContent>
-                  {mockCustomers.map((c) => (
+                  {customers.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.companyName}</SelectItem>
                   ))}
                 </SelectContent>
@@ -84,36 +113,54 @@ export function ExperimentForm({ open, onClose, onSave, experiment, isSaving }: 
             </div>
             <div className="space-y-1.5">
               <Label>试验频率 <span className="text-red-500">*</span></Label>
-              <Select value={frequency} onValueChange={(v) => setValue('frequency', v as 'QUARTERLY' | 'MONTHLY')}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={frequency ?? ''} onValueChange={(v) => setValue('frequency', v as 'QUARTERLY' | 'MONTHLY', { shouldValidate: true })}>
+                <SelectTrigger><SelectValue placeholder="请选择" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="QUARTERLY">季度试验</SelectItem>
                   <SelectItem value="MONTHLY">月度试验</SelectItem>
                 </SelectContent>
               </Select>
+              {errors.frequency && <p className="text-red-500 text-xs">{errors.frequency.message}</p>}
             </div>
           </div>
 
           <div className="space-y-1.5">
+            <Label>负责人 <span className="text-red-500">*</span></Label>
+            <Select value={responsiblePersonId} onValueChange={(v) => setValue('responsiblePersonId', v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="请选择负责人" />
+              </SelectTrigger>
+              <SelectContent>
+                {employees.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>
+                    {e.name}（{e.role === 'DEPT_MANAGER' ? '部门负责人' : '职员'}）
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.responsiblePersonId && <p className="text-red-500 text-xs">{errors.responsiblePersonId.message}</p>}
+          </div>
+
+          <div className="space-y-1.5">
             <Label>电力设备 <span className="text-red-500">*</span></Label>
-            <Input {...register('powerEquipment')} placeholder="例：主变压器绕组绝缘电阻测试" />
+            <Textarea {...register('powerEquipment')} placeholder="例：主变压器绕组绝缘电阻测试" className="resize-none h-20" />
             {errors.powerEquipment && <p className="text-red-500 text-xs">{errors.powerEquipment.message}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>上次试验日期</Label>
-              <Input {...register('lastTestDate')} type="date" />
+              <DateInput {...register('lastTestDate')} />
             </div>
             <div className="space-y-1.5">
               <Label>下次试验日期</Label>
-              <Input {...register('nextTestDate')} type="date" />
+              <DateInput {...register('nextTestDate')} />
             </div>
           </div>
 
           <div className="space-y-1.5">
             <Label>安全工器具</Label>
-            <Input {...register('safetyTools')} placeholder="例：兆欧表、高压绝缘测试仪" />
+            <Textarea {...register('safetyTools')} placeholder="例：兆欧表、高压绝缘测试仪" className="resize-none h-20" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

@@ -6,6 +6,10 @@ export class CreateInspectionDto {
   @IsNotEmpty({ message: '客户ID不能为空' })
   customerId: string
 
+  @IsString()
+  @IsNotEmpty({ message: '负责人不能为空' })
+  responsiblePersonId: string
+
   @IsEnum(InspectionFrequency, { message: '巡检频率值无效' })
   frequency: InspectionFrequency
 

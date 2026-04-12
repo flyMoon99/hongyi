@@ -1,48 +1,22 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Building2, Users, ClipboardCheck, FlaskConical, AlertTriangle, ArrowRight, Calendar } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/auth-context'
-import { mockCustomers, mockEmployees, mockInspections, mockExperiments } from '@/lib/mock-data'
+import { apiClient } from '@/lib/api-client'
 import { formatDate, getDaysUntil } from '@/lib/utils'
+import type { Inspection, Experiment } from '@/types'
 
-const stats = [
-  {
-    title: '客户总数',
-    value: mockCustomers.length,
-    icon: Building2,
-    color: 'text-blue-600',
-    bg: 'bg-blue-50',
-    href: '/customers',
-  },
-  {
-    title: '员工人数',
-    value: mockEmployees.length,
-    icon: Users,
-    color: 'text-purple-600',
-    bg: 'bg-purple-50',
-    href: '/employees',
-  },
-  {
-    title: '巡检计划',
-    value: mockInspections.length,
-    icon: ClipboardCheck,
-    color: 'text-green-600',
-    bg: 'bg-green-50',
-    href: '/inspections',
-  },
-  {
-    title: '试验计划',
-    value: mockExperiments.length,
-    icon: FlaskConical,
-    color: 'text-orange-600',
-    bg: 'bg-orange-50',
-    href: '/experiments',
-  },
-]
+interface DashboardStats {
+  customers: number
+  employees: number
+  inspections: number
+  experiments: number
+}
 
 function getUrgencyLevel(days: number | null) {
   if (days === null) return null
@@ -54,16 +28,55 @@ function getUrgencyLevel(days: number | null) {
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const [stats, setStats] = useState<DashboardStats>({ customers: 0, employees: 0, inspections: 0, experiments: 0 })
+  const [upcomingInspections, setUpcomingInspections] = useState<Inspection[]>([])
+  const [upcomingExperiments, setUpcomingExperiments] = useState<Experiment[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const upcomingInspections = mockInspections
-    .filter((i) => i.nextInspectionDate)
-    .sort((a, b) => new Date(a.nextInspectionDate!).getTime() - new Date(b.nextInspectionDate!).getTime())
-    .slice(0, 5)
+  useEffect(() => {
+    async function fetchAll() {
+      setLoading(true)
+      try {
+        const [customersRes, employeesRes, inspectionsRes, experimentsRes] = await Promise.all([
+          apiClient.get<{ total: number }>('/customers?pageSize=1'),
+          apiClient.get<{ total: number }>('/employees?pageSize=1'),
+          apiClient.get<{ total: number; items: Inspection[] }>('/inspections?pageSize=200'),
+          apiClient.get<{ total: number; items: Experiment[] }>('/experiments?pageSize=200'),
+        ])
 
-  const upcomingExperiments = mockExperiments
-    .filter((e) => e.nextTestDate)
-    .sort((a, b) => new Date(a.nextTestDate!).getTime() - new Date(b.nextTestDate!).getTime())
-    .slice(0, 5)
+        setStats({
+          customers: customersRes.total ?? 0,
+          employees: employeesRes.total ?? 0,
+          inspections: inspectionsRes.total ?? 0,
+          experiments: experimentsRes.total ?? 0,
+        })
+
+        const sortedInspections = (inspectionsRes.items ?? [])
+          .filter((i) => i.nextInspectionDate)
+          .sort((a, b) => new Date(a.nextInspectionDate!).getTime() - new Date(b.nextInspectionDate!).getTime())
+          .slice(0, 5)
+        setUpcomingInspections(sortedInspections)
+
+        const sortedExperiments = (experimentsRes.items ?? [])
+          .filter((e) => e.nextTestDate)
+          .sort((a, b) => new Date(a.nextTestDate!).getTime() - new Date(b.nextTestDate!).getTime())
+          .slice(0, 5)
+        setUpcomingExperiments(sortedExperiments)
+      } catch {
+        // keep zeros on error
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchAll()
+  }, [])
+
+  const statCards = [
+    { title: '客户总数', value: stats.customers, icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50', href: '/customers' },
+    { title: '员工人数', value: stats.employees, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', href: '/employees' },
+    { title: '巡检计划', value: stats.inspections, icon: ClipboardCheck, color: 'text-green-600', bg: 'bg-green-50', href: '/inspections' },
+    { title: '试验计划', value: stats.experiments, icon: FlaskConical, color: 'text-orange-600', bg: 'bg-orange-50', href: '/experiments' },
+  ]
 
   return (
     <div className="space-y-6">
@@ -77,7 +90,7 @@ export default function DashboardPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {stats.map((stat) => {
+        {statCards.map((stat) => {
           const Icon = stat.icon
           return (
             <Link key={stat.title} href={stat.href}>
@@ -86,7 +99,9 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-slate-500 mb-1">{stat.title}</p>
-                      <p className="text-3xl font-bold text-slate-800">{stat.value}</p>
+                      <p className="text-3xl font-bold text-slate-800">
+                        {loading ? <span className="inline-block w-8 h-8 bg-slate-100 rounded animate-pulse" /> : stat.value}
+                      </p>
                     </div>
                     <div className={`${stat.bg} p-3 rounded-xl group-hover:scale-110 transition-transform`}>
                       <Icon className={stat.color} size={24} />
@@ -117,21 +132,28 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {upcomingInspections.length === 0 ? (
+            {loading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((n) => (
+                  <div key={n} className="h-14 bg-slate-50 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : upcomingInspections.length === 0 ? (
               <p className="text-sm text-slate-400 py-4 text-center">暂无巡检计划</p>
             ) : (
               <div className="space-y-2">
                 {upcomingInspections.map((item) => {
                   const days = getDaysUntil(item.nextInspectionDate)
                   const urgency = getUrgencyLevel(days)
+                  const customerName = item.customer?.companyName ?? item.customerName ?? '-'
                   return (
                     <Link
                       key={item.id}
-                      href="/inspections"
+                      href={`/inspections/detail?id=${encodeURIComponent(item.id)}`}
                       className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors group"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-700 truncate">{item.customerName}</p>
+                        <p className="text-sm font-medium text-slate-700 truncate">{customerName}</p>
                         <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
                           <Calendar size={11} />
                           {formatDate(item.nextInspectionDate)}
@@ -174,21 +196,28 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {upcomingExperiments.length === 0 ? (
+            {loading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((n) => (
+                  <div key={n} className="h-14 bg-slate-50 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : upcomingExperiments.length === 0 ? (
               <p className="text-sm text-slate-400 py-4 text-center">暂无试验计划</p>
             ) : (
               <div className="space-y-2">
                 {upcomingExperiments.map((item) => {
                   const days = getDaysUntil(item.nextTestDate)
                   const urgency = getUrgencyLevel(days)
+                  const customerName = item.customer?.companyName ?? item.customerName ?? '-'
                   return (
                     <Link
                       key={item.id}
-                      href="/experiments"
+                      href={`/experiments/detail?id=${encodeURIComponent(item.id)}`}
                       className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors group"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-700 truncate">{item.customerName}</p>
+                        <p className="text-sm font-medium text-slate-700 truncate">{customerName}</p>
                         <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
                           <Calendar size={11} />
                           {formatDate(item.nextTestDate)}

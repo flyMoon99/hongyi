@@ -6,6 +6,10 @@ export class CreateExperimentDto {
   @IsNotEmpty({ message: '客户ID不能为空' })
   customerId: string
 
+  @IsString()
+  @IsNotEmpty({ message: '负责人不能为空' })
+  responsiblePersonId: string
+
   @IsEnum(ExperimentFrequency, { message: '试验频率值无效' })
   frequency: ExperimentFrequency
 

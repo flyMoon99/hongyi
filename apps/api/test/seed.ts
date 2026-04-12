@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, Gender } from '@prisma/client'
+import { PrismaClient, UserRole, Gender, InspectionFrequency, ExperimentFrequency } from '@prisma/client'
 import * as bcrypt from 'bcryptjs'
 
 export const SEEDS = {
@@ -23,17 +23,36 @@ export const SEEDS = {
     name: '测试职员',
     password: 'Staff@123456',
   },
-  /** Pre-seeded customer for read / update / delete tests */
   customer: {
     id: 'test-customer-001',
     companyName: '测试电力公司',
     contactPerson: '张三',
     contactInfo: '13011110001',
   },
+  inspection: {
+    id: 'test-inspection-001',
+    frequency: 'QUARTERLY' as InspectionFrequency,
+    powerEquipment: '110kV主变压器、GIS设备',
+    contactPerson: '李工',
+    contactInfo: '13800001111',
+    safetyTools: '绝缘手套、验电器',
+  },
+  experiment: {
+    id: 'test-experiment-001',
+    frequency: 'QUARTERLY' as ExperimentFrequency,
+    powerEquipment: '主变压器绕组绝缘电阻测试',
+    contactPerson: '王工',
+    contactInfo: '13800002222',
+    safetyTools: '兆欧表、高压绝缘测试仪',
+  },
 }
 
 export async function buildSeed(prisma: PrismaClient): Promise<void> {
-  // Clean in dependency order (customers first so FK constraints pass)
+  // Clean in reverse dependency order
+  await prisma.experimentLog.deleteMany()
+  await prisma.experiment.deleteMany()
+  await prisma.inspectionLog.deleteMany()
+  await prisma.inspection.deleteMany()
   await prisma.customerLog.deleteMany()
   await prisma.customer.deleteMany()
   await prisma.employeeLog.deleteMany()
@@ -79,6 +98,34 @@ export async function buildSeed(prisma: PrismaClient): Promise<void> {
       companyName: SEEDS.customer.companyName,
       contactPerson: SEEDS.customer.contactPerson,
       contactInfo: SEEDS.customer.contactInfo,
+      isDeleted: false,
+    },
+  })
+
+  await prisma.inspection.create({
+    data: {
+      id: SEEDS.inspection.id,
+      customerId: SEEDS.customer.id,
+      responsiblePersonId: SEEDS.staff.id,
+      frequency: SEEDS.inspection.frequency,
+      powerEquipment: SEEDS.inspection.powerEquipment,
+      contactPerson: SEEDS.inspection.contactPerson,
+      contactInfo: SEEDS.inspection.contactInfo,
+      safetyTools: SEEDS.inspection.safetyTools,
+      isDeleted: false,
+    },
+  })
+
+  await prisma.experiment.create({
+    data: {
+      id: SEEDS.experiment.id,
+      customerId: SEEDS.customer.id,
+      responsiblePersonId: SEEDS.staff.id,
+      frequency: SEEDS.experiment.frequency,
+      powerEquipment: SEEDS.experiment.powerEquipment,
+      contactPerson: SEEDS.experiment.contactPerson,
+      contactInfo: SEEDS.experiment.contactInfo,
+      safetyTools: SEEDS.experiment.safetyTools,
       isDeleted: false,
     },
   })

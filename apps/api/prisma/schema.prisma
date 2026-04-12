@@ -43,11 +43,13 @@ model Employee {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  customerLogs    CustomerLog[]
-  inspectionLogs  InspectionLog[]
-  experimentLogs  ExperimentLog[]
-  employeeLogs    EmployeeLog[]   @relation("target")
-  operatedLogs    EmployeeLog[]   @relation("operator")
+  customerLogs           CustomerLog[]
+  inspectionLogs         InspectionLog[]
+  experimentLogs         ExperimentLog[]
+  employeeLogs           EmployeeLog[]   @relation("target")
+  operatedLogs           EmployeeLog[]   @relation("operator")
+  responsibleInspections Inspection[]
+  responsibleExperiments Experiment[]
 
   @@map("employees")
 }
@@ -100,20 +102,24 @@ model CustomerLog {
 }
 
 model Inspection {
-  id                 String              @id @default(cuid())
-  customerId         String
-  frequency          InspectionFrequency @default(QUARTERLY)
-  powerEquipment     String
-  lastInspectionDate DateTime?
-  nextInspectionDate DateTime?
-  safetyTools        String?
-  contactPerson      String
-  contactInfo        String
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  id                  String              @id @default(cuid())
+  customerId          String
+  responsiblePersonId String
+  frequency           InspectionFrequency @default(QUARTERLY)
+  powerEquipment      String
+  lastInspectionDate  DateTime?
+  nextInspectionDate  DateTime?
+  safetyTools         String?
+  contactPerson       String
+  contactInfo         String
+  isDeleted           Boolean             @default(false)
+  deletedAt           DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
-  customer Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  logs     InspectionLog[]
+  customer          Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  responsiblePerson Employee        @relation(fields: [responsiblePersonId], references: [id])
+  logs              InspectionLog[]
 
   @@map("inspections")
 }
@@ -133,20 +139,24 @@ model InspectionLog {
 }
 
 model Experiment {
-  id             String              @id @default(cuid())
-  customerId     String
-  frequency      ExperimentFrequency @default(QUARTERLY)
-  powerEquipment String
-  lastTestDate   DateTime?
-  nextTestDate   DateTime?
-  safetyTools    String?
-  contactPerson  String
-  contactInfo    String
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  id                  String              @id @default(cuid())
+  customerId          String
+  responsiblePersonId String
+  frequency           ExperimentFrequency @default(QUARTERLY)
+  powerEquipment      String
+  lastTestDate        DateTime?
+  nextTestDate        DateTime?
+  safetyTools         String?
+  contactPerson       String
+  contactInfo         String
+  isDeleted           Boolean             @default(false)
+  deletedAt           DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
-  customer Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  logs     ExperimentLog[]
+  customer          Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  responsiblePerson Employee        @relation(fields: [responsiblePersonId], references: [id])
+  logs              ExperimentLog[]
 
   @@map("experiments")
 }

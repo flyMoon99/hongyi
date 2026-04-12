@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common'
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards } from '@nestjs/common'
 import { InspectionsService } from './inspections.service'
 import { CreateInspectionDto } from './dto/create-inspection.dto'
 import { UpdateInspectionDto } from './dto/update-inspection.dto'
 import { JwtAuthGuard } from '../common/jwt-auth.guard'
+import { RolesGuard } from '../common/roles.guard'
+import { CurrentUser } from '../common/current-user.decorator'
 
 @UseGuards(JwtAuthGuard)
 @Controller('inspections')
@@ -25,17 +27,18 @@ export class InspectionsController {
   }
 
   @Post()
-  create(@Body() dto: CreateInspectionDto, @Request() req: any) {
-    return this.service.create(dto, req.user.id)
+  create(@Body() dto: CreateInspectionDto, @CurrentUser() user: any) {
+    return this.service.create(dto, user.id)
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateInspectionDto, @Request() req: any) {
-    return this.service.update(id, dto, req.user.id)
+  update(@Param('id') id: string, @Body() dto: UpdateInspectionDto, @CurrentUser() user: any) {
+    return this.service.update(id, dto, user.id)
   }
 
+  @UseGuards(RolesGuard)
   @Delete(':id')
-  remove(@Param('id') id: string, @Request() req: any) {
-    return this.service.remove(id, req.user.id)
+  remove(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.service.remove(id, user.id, user.role)
   }
 }
