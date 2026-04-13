@@ -12,6 +12,7 @@ import { DateInput } from '@/components/ui/date-input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { apiClient } from '@/lib/api-client'
+import { useAuth } from '@/contexts/auth-context'
 import type { Inspection, Customer, Employee } from '@/types'
 
 const schema = z.object({
@@ -41,6 +42,8 @@ interface Props {
 
 export function InspectionForm({ open, onClose, onSave, inspection, isSaving }: Props) {
   const isEdit = !!inspection
+  const { user } = useAuth()
+  const isStaff = user?.role === 'STAFF'
   const [customers, setCustomers] = useState<Customer[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
 
@@ -76,7 +79,8 @@ export function InspectionForm({ open, onClose, onSave, inspection, isSaving }: 
       } else {
         reset({
           customerId: '',
-          responsiblePersonId: '',
+          // STAFF defaults to themselves; others start blank
+          responsiblePersonId: isStaff && user ? user.id : '',
           frequency: '' as 'QUARTERLY' | 'MONTHLY',
           powerEquipment: '',
           safetyTools: '',
@@ -85,7 +89,7 @@ export function InspectionForm({ open, onClose, onSave, inspection, isSaving }: 
         })
       }
     }
-  }, [open, inspection, reset])
+  }, [open, inspection, reset, isStaff, user])
 
   const frequency = watch('frequency')
   const customerId = watch('customerId')
@@ -128,9 +132,13 @@ export function InspectionForm({ open, onClose, onSave, inspection, isSaving }: 
 
           <div className="space-y-1.5">
             <Label>负责人 <span className="text-red-500">*</span></Label>
-            <Select value={responsiblePersonId} onValueChange={(v) => setValue('responsiblePersonId', v)}>
+            <Select
+              value={responsiblePersonId}
+              onValueChange={(v) => setValue('responsiblePersonId', v)}
+              disabled={isStaff}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="请选择负责人" />
+                <SelectValue placeholder="请选择负责人（非管理员）" />
               </SelectTrigger>
               <SelectContent>
                 {employees.map((e) => (
@@ -140,6 +148,7 @@ export function InspectionForm({ open, onClose, onSave, inspection, isSaving }: 
                 ))}
               </SelectContent>
             </Select>
+            {isStaff && <p className="text-xs text-slate-400">职员只能将自己设为负责人</p>}
             {errors.responsiblePersonId && <p className="text-red-500 text-xs">{errors.responsiblePersonId.message}</p>}
           </div>
 

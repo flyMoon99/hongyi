@@ -158,7 +158,7 @@ export default function ExperimentsPage() {
                         </TableCell>
                         <TableCell>
                           <Badge variant={item.frequency === 'MONTHLY' ? 'info' : 'warning'} className="text-xs">
-                            {item.frequency === 'MONTHLY' ? '月度试验' : '季度试验'}
+                            {item.frequency === 'MONTHLY' ? '每年1次' : '每年2次'}
                           </Badge>
                         </TableCell>
                         <TableCell>

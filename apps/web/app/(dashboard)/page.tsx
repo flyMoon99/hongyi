@@ -231,7 +231,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <Badge variant={item.frequency === 'MONTHLY' ? 'info' : 'success'} className="text-xs">
-                          {item.frequency === 'MONTHLY' ? '月度' : '季度'}
+                          {item.frequency === 'MONTHLY' ? '每年1次' : '每年2次'}
                         </Badge>
                         {urgency && days !== null && days <= 30 && (
                           <Badge variant={urgency.variant} className="text-xs">

@@ -126,7 +126,7 @@ export default function ExperimentDetail({ id }: { id: string }) {
                 variant={experiment.frequency === 'MONTHLY' ? 'info' : 'warning'}
                 className="text-xs mt-1"
               >
-                {experiment.frequency === 'MONTHLY' ? '月度试验' : '季度试验'}
+                {experiment.frequency === 'MONTHLY' ? '每年1次' : '每年2次'}
               </Badge>
             </div>
           </div>

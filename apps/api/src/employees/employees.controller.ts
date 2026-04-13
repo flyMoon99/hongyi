@@ -11,7 +11,6 @@ import { CurrentUser } from '../common/current-user.decorator'
 export class EmployeesController {
   constructor(private service: EmployeesService) {}
 
-  @UseGuards(RolesGuard)
   @Get()
   findAll(
     @Query('page') page = '1',
