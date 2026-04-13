@@ -36,44 +36,50 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchAll() {
       setLoading(true)
-      try {
-        const [customersRes, employeesRes, inspectionsRes, experimentsRes] = await Promise.all([
-          apiClient.get<{ total: number }>('/customers?pageSize=1'),
-          apiClient.get<{ total: number }>('/employees?pageSize=1'),
-          apiClient.get<{ total: number; items: Inspection[] }>('/inspections?pageSize=200'),
-          apiClient.get<{ total: number; items: Experiment[] }>('/experiments?pageSize=200'),
-        ])
+      const [customersRes, employeesRes, inspectionsRes, experimentsRes] = await Promise.allSettled([
+        apiClient.get<{ total: number }>('/customers?pageSize=1'),
+        apiClient.get<{ total: number }>('/employees?pageSize=1'),
+        apiClient.get<{ total: number; items: Inspection[] }>('/inspections?pageSize=200'),
+        apiClient.get<{ total: number; items: Experiment[] }>('/experiments?pageSize=200'),
+      ])
 
-        setStats({
-          customers: customersRes.total ?? 0,
-          employees: employeesRes.total ?? 0,
-          inspections: inspectionsRes.total ?? 0,
-          experiments: experimentsRes.total ?? 0,
-        })
+      const val = <T,>(r: PromiseSettledResult<T>): T | undefined =>
+        r.status === 'fulfilled' ? r.value : undefined
 
-        const sortedInspections = (inspectionsRes.items ?? [])
-          .filter((i) => i.nextInspectionDate)
-          .sort((a, b) => new Date(a.nextInspectionDate!).getTime() - new Date(b.nextInspectionDate!).getTime())
-          .slice(0, 5)
-        setUpcomingInspections(sortedInspections)
+      const custData  = val(customersRes)
+      const empData   = val(employeesRes)
+      const inspData  = val(inspectionsRes)
+      const expData   = val(experimentsRes)
 
-        const sortedExperiments = (experimentsRes.items ?? [])
-          .filter((e) => e.nextTestDate)
-          .sort((a, b) => new Date(a.nextTestDate!).getTime() - new Date(b.nextTestDate!).getTime())
-          .slice(0, 5)
-        setUpcomingExperiments(sortedExperiments)
-      } catch {
-        // keep zeros on error
-      } finally {
-        setLoading(false)
-      }
+      setStats({
+        customers:   custData?.total  ?? 0,
+        employees:   empData?.total   ?? 0,
+        inspections: inspData?.total  ?? 0,
+        experiments: expData?.total   ?? 0,
+      })
+
+      const sortedInspections = (inspData?.items ?? [])
+        .filter((i) => i.nextInspectionDate)
+        .sort((a, b) => new Date(a.nextInspectionDate!).getTime() - new Date(b.nextInspectionDate!).getTime())
+        .slice(0, 5)
+      setUpcomingInspections(sortedInspections)
+
+      const sortedExperiments = (expData?.items ?? [])
+        .filter((e) => e.nextTestDate)
+        .sort((a, b) => new Date(a.nextTestDate!).getTime() - new Date(b.nextTestDate!).getTime())
+        .slice(0, 5)
+      setUpcomingExperiments(sortedExperiments)
+
+      setLoading(false)
     }
     fetchAll()
   }, [])
 
+  const canSeeEmployees = user?.role === 'ADMIN' || user?.role === 'DEPT_MANAGER'
+
   const statCards = [
     { title: '客户总数', value: stats.customers, icon: Building2, color: 'text-blue-600', bg: 'bg-blue-50', href: '/customers' },
-    { title: '员工人数', value: stats.employees, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', href: '/employees' },
+    ...(canSeeEmployees ? [{ title: '员工人数', value: stats.employees, icon: Users, color: 'text-purple-600', bg: 'bg-purple-50', href: '/employees' }] : []),
     { title: '巡检计划', value: stats.inspections, icon: ClipboardCheck, color: 'text-green-600', bg: 'bg-green-50', href: '/inspections' },
     { title: '试验计划', value: stats.experiments, icon: FlaskConical, color: 'text-orange-600', bg: 'bg-orange-50', href: '/experiments' },
   ]

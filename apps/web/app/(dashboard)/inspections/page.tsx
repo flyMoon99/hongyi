@@ -36,6 +36,12 @@ export default function InspectionsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // Initialize search from URL query param (e.g. navigating from alert bubble)
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('search')
+    if (q) setSearch(q)
+  }, [])
+
   const fetchInspections = useCallback(async () => {
     setIsLoading(true)
     try {
@@ -108,7 +114,7 @@ export default function InspectionsPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索客户、设备..."
+              placeholder="搜索客户、设备、负责人..."
               className="pl-9"
             />
           </div>

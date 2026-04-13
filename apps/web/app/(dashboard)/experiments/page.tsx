@@ -35,6 +35,12 @@ export default function ExperimentsPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // Initialize search from URL query param (e.g. navigating from alert bubble)
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('search')
+    if (q) setSearch(q)
+  }, [])
+
   const fetchExperiments = useCallback(async () => {
     setIsLoading(true)
     try {

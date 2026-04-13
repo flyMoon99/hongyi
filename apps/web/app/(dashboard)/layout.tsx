@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
+import { AlertBubble } from '@/components/layout/alert-bubble'
 import { useAuth } from '@/contexts/auth-context'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -39,6 +40,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Header onMenuClick={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">{children}</main>
       </div>
+      <AlertBubble />
     </div>
   )
 }

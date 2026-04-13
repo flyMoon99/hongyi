@@ -17,6 +17,7 @@ export class InspectionsService {
       where.OR = [
         { powerEquipment: { contains: search } },
         { customer: { companyName: { contains: search } } },
+        { responsiblePerson: { name: { contains: search } } },
       ]
     }
     const [items, total] = await Promise.all([
