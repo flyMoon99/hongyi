@@ -23,6 +23,13 @@ import { useAuth } from '@/contexts/auth-context'
 import { canManageEmployees } from '@/types'
 import type { InspectionWithLogs } from '@/types'
 
+const FREQUENCY_LABEL: Record<string, string> = {
+  QUARTERLY: '季度巡检',
+  MONTHLY: '月度巡检',
+  TWICE_MONTHLY: '每月2次',
+  ANNUALLY: '年度巡检',
+}
+
 export default function InspectionDetail({ id }: { id: string }) {
   const router = useRouter()
   const { user } = useAuth()
@@ -123,10 +130,15 @@ export default function InspectionDetail({ id }: { id: string }) {
             <div>
               <p className="text-lg font-semibold text-slate-800">{inspection.customer.companyName}</p>
               <Badge
-                variant={inspection.frequency === 'MONTHLY' ? 'info' : 'success'}
+                variant={
+                  inspection.frequency === 'MONTHLY' ? 'info'
+                  : inspection.frequency === 'TWICE_MONTHLY' ? 'warning'
+                  : inspection.frequency === 'ANNUALLY' ? 'outline'
+                  : 'success'
+                }
                 className="text-xs mt-1"
               >
-                {inspection.frequency === 'MONTHLY' ? '月度巡检' : '季度巡检'}
+                {FREQUENCY_LABEL[inspection.frequency] ?? inspection.frequency}
               </Badge>
             </div>
           </div>
@@ -141,10 +153,10 @@ export default function InspectionDetail({ id }: { id: string }) {
             <p className="text-sm text-slate-700 whitespace-pre-wrap">{inspection.powerEquipment}</p>
           </div>
 
-          {/* 安全工器具 - 单独一行 */}
+          {/* 其他备注 - 单独一行 */}
           <div className="mb-5">
             <p className="text-xs text-slate-400 mb-1 flex items-center gap-1">
-              <Wrench size={11} /> 安全工器具
+              <Wrench size={11} /> 其他备注
             </p>
             <p className="text-sm text-slate-700 whitespace-pre-wrap">{inspection.safetyTools || '-'}</p>
           </div>

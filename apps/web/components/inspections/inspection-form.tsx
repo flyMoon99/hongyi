@@ -19,7 +19,8 @@ const schema = z.object({
   customerId: z.string().min(1, '请选择客户'),
   responsiblePersonId: z.string().min(1, '请选择负责人'),
   frequency: z.string().refine(
-    (v): v is 'QUARTERLY' | 'MONTHLY' => v === 'QUARTERLY' || v === 'MONTHLY',
+    (v): v is 'QUARTERLY' | 'MONTHLY' | 'TWICE_MONTHLY' | 'ANNUALLY' =>
+      ['QUARTERLY', 'MONTHLY', 'TWICE_MONTHLY', 'ANNUALLY'].includes(v),
     { message: '请选择巡检频率' },
   ),
   powerEquipment: z.string().min(1, '电力设备不能为空'),
@@ -119,11 +120,13 @@ export function InspectionForm({ open, onClose, onSave, inspection, isSaving }: 
             </div>
             <div className="space-y-1.5">
               <Label>巡检频率 <span className="text-red-500">*</span></Label>
-              <Select value={frequency ?? ''} onValueChange={(v) => setValue('frequency', v as 'QUARTERLY' | 'MONTHLY', { shouldValidate: true })}>
+              <Select value={frequency ?? ''} onValueChange={(v) => setValue('frequency', v as 'QUARTERLY' | 'MONTHLY' | 'TWICE_MONTHLY' | 'ANNUALLY', { shouldValidate: true })}>
                 <SelectTrigger><SelectValue placeholder="请选择" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="QUARTERLY">季度巡检</SelectItem>
                   <SelectItem value="MONTHLY">月度巡检</SelectItem>
+                  <SelectItem value="TWICE_MONTHLY">每月2次</SelectItem>
+                  <SelectItem value="ANNUALLY">年度巡检</SelectItem>
                 </SelectContent>
               </Select>
               {errors.frequency && <p className="text-red-500 text-xs">{errors.frequency.message}</p>}
@@ -170,8 +173,8 @@ export function InspectionForm({ open, onClose, onSave, inspection, isSaving }: 
           </div>
 
           <div className="space-y-1.5">
-            <Label>安全工器具</Label>
-            <Textarea {...register('safetyTools')} placeholder="例：绝缘手套、验电器" className="resize-none h-20" />
+            <Label>其他备注</Label>
+            <Textarea {...register('safetyTools')} placeholder="" className="resize-none h-20" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

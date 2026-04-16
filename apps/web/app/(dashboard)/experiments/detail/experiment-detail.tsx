@@ -123,10 +123,10 @@ export default function ExperimentDetail({ id }: { id: string }) {
             <div>
               <p className="text-lg font-semibold text-slate-800">{experiment.customer.companyName}</p>
               <Badge
-                variant={experiment.frequency === 'MONTHLY' ? 'info' : 'warning'}
+                variant={experiment.frequency === 'MONTHLY' ? 'outline' : 'info'}
                 className="text-xs mt-1"
               >
-                {experiment.frequency === 'MONTHLY' ? '每年1次' : '每年2次'}
+                {experiment.frequency === 'MONTHLY' ? '2年1次' : '每年1次'}
               </Badge>
             </div>
           </div>

@@ -120,8 +120,8 @@ export function ExperimentForm({ open, onClose, onSave, experiment, isSaving }: 
               <Select value={frequency ?? ''} onValueChange={(v) => setValue('frequency', v as 'QUARTERLY' | 'MONTHLY', { shouldValidate: true })}>
                 <SelectTrigger><SelectValue placeholder="请选择" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="QUARTERLY">每年2次</SelectItem>
-                  <SelectItem value="MONTHLY">每年1次</SelectItem>
+                  <SelectItem value="QUARTERLY">每年1次</SelectItem>
+                  <SelectItem value="MONTHLY">2年1次</SelectItem>
                 </SelectContent>
               </Select>
               {errors.frequency && <p className="text-red-500 text-xs">{errors.frequency.message}</p>}
@@ -169,7 +169,7 @@ export function ExperimentForm({ open, onClose, onSave, experiment, isSaving }: 
 
           <div className="space-y-1.5">
             <Label>安全工器具</Label>
-            <Textarea {...register('safetyTools')} placeholder="例：兆欧表、高压绝缘测试仪" className="resize-none h-20" />
+            <Textarea {...register('safetyTools')} placeholder="例：绝缘手套、绝缘靴、验电器等" className="resize-none h-20" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

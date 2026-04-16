@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Plus, Search, Pencil, Trash2, AlertTriangle, Calendar, Eye } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, AlertTriangle, Calendar, Eye, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,7 +15,7 @@ import {
   AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { ExperimentForm } from '@/components/experiments/experiment-form'
-import { formatDate, getDaysUntil, cn } from '@/lib/utils'
+import { formatDate, getDaysUntil, cn, exportToCsv } from '@/lib/utils'
 import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/auth-context'
 import { canManageEmployees } from '@/types'
@@ -34,6 +34,7 @@ export default function ExperimentsPage() {
   const [deleting, setDeleting] = useState<Experiment | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   // Initialize search from URL query param (e.g. navigating from alert bubble)
   useEffect(() => {
@@ -94,6 +95,37 @@ export default function ExperimentsPage() {
     }
   }
 
+  const FREQ_LABEL: Record<string, string> = { QUARTERLY: '每年1次', MONTHLY: '2年1次' }
+
+  const handleExport = async () => {
+    setIsExporting(true)
+    try {
+      const params = new URLSearchParams({ page: '1', pageSize: '500' })
+      if (search) params.set('search', search)
+      const data = await apiClient.get<{ items: Experiment[]; total: number }>(`/experiments?${params}`)
+      const rows = data.items.map((item) => [
+        item.customer?.companyName ?? item.customerName ?? '',
+        FREQ_LABEL[item.frequency] ?? item.frequency,
+        item.powerEquipment,
+        item.responsiblePerson?.name ?? '',
+        item.contactPerson,
+        item.contactInfo,
+        formatDate(item.lastTestDate),
+        formatDate(item.nextTestDate),
+        item.safetyTools ?? '',
+        formatDate(item.createdAt),
+      ])
+      exportToCsv(`试验列表_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '')}.csv`,
+        ['客户名称', '试验频率', '电力设备', '负责人', '联系人', '联系方式', '上次试验', '下次试验', '安全工器具', '创建时间'],
+        rows)
+      toast.success(`已导出 ${rows.length} 条记录`)
+    } catch {
+      toast.error('导出失败')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -101,9 +133,17 @@ export default function ExperimentsPage() {
           <h1 className="text-xl font-bold text-slate-800">设备试验管理</h1>
           <p className="text-sm text-slate-500 mt-0.5">共 {total} 条试验计划</p>
         </div>
-        <Button onClick={() => { setEditing(null); setFormOpen(true) }} className="bg-red-600 hover:bg-red-700">
-          <Plus size={16} /> 新增试验
-        </Button>
+        {canManage && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExport} disabled={isExporting} className="gap-1.5">
+              <Download size={15} />
+              {isExporting ? '导出中...' : '导出'}
+            </Button>
+            <Button onClick={() => { setEditing(null); setFormOpen(true) }} className="bg-red-600 hover:bg-red-700">
+              <Plus size={16} /> 新增试验
+            </Button>
+          </div>
+        )}
       </div>
 
       <Card>
@@ -157,8 +197,8 @@ export default function ExperimentsPage() {
                           <span className="font-medium text-slate-800 text-sm">{customerName}</span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={item.frequency === 'MONTHLY' ? 'info' : 'warning'} className="text-xs">
-                            {item.frequency === 'MONTHLY' ? '每年1次' : '每年2次'}
+                          <Badge variant={item.frequency === 'MONTHLY' ? 'outline' : 'info'} className="text-xs">
+                            {item.frequency === 'MONTHLY' ? '2年1次' : '每年1次'}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -195,14 +235,16 @@ export default function ExperimentsPage() {
                                 <Eye size={14} className="text-slate-500" />
                               </Link>
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => { setEditing(item); setFormOpen(true) }}
-                              className="h-8 px-2"
-                            >
-                              <Pencil size={14} className="text-slate-500" />
-                            </Button>
+                            {canManage && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => { setEditing(item); setFormOpen(true) }}
+                                className="h-8 px-2"
+                              >
+                                <Pencil size={14} className="text-slate-500" />
+                              </Button>
+                            )}
                             {canManage && (
                               <Button
                                 variant="ghost"

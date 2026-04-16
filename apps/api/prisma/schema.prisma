@@ -21,6 +21,8 @@ enum UserRole {
 enum InspectionFrequency {
   QUARTERLY
   MONTHLY
+  TWICE_MONTHLY
+  ANNUALLY
 }
 
 enum ExperimentFrequency {

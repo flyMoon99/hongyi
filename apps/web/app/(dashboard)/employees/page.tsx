@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Search, Pencil, Trash2, ShieldCheck, Users, User, Eye } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, ShieldCheck, Users, User, Eye, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,7 +17,7 @@ import {
 import { EmployeeForm } from '@/components/employees/employee-form'
 import { useAuth } from '@/contexts/auth-context'
 import { canManageEmployees, canManageEmployeeRecord } from '@/types'
-import { formatDate } from '@/lib/utils'
+import { formatDate, exportToCsv } from '@/lib/utils'
 import apiClient from '@/lib/api-client'
 import Link from 'next/link'
 import type { Employee, EmployeeFormValues, EmployeesListResponse } from '@/types'
@@ -37,6 +37,7 @@ export default function EmployeesPage() {
   const [deleting, setDeleting] = useState<Employee | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isExporting, setIsExporting] = useState(false)
 
   const fetchEmployees = useCallback(async () => {
     setIsLoading(true)
@@ -58,6 +59,26 @@ export default function EmployeesPage() {
   const handleSearch = () => {
     setPage(1)
     setSearch(searchInput)
+  }
+
+  const handleExport = async () => {
+    setIsExporting(true)
+    try {
+      const data = await apiClient.get('/employees', {
+        params: { page: 1, pageSize: 500, search: search || undefined },
+      }) as EmployeesListResponse
+      const ROLE_LABEL: Record<string, string> = { ADMIN: '管理员', DEPT_MANAGER: '部门负责人', STAFF: '职员' }
+      const rows = data.items.map((e) => [
+        e.name, e.gender === 'MALE' ? '男' : '女', e.phone, e.email || '', ROLE_LABEL[e.role] ?? e.role, formatDate(e.createdAt),
+      ])
+      exportToCsv(`员工列表_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '')}.csv`,
+        ['姓名', '性别', '手机号', '邮箱', '角色', '创建时间'], rows)
+      toast.success(`已导出 ${rows.length} 条记录`)
+    } catch {
+      toast.error('导出失败')
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const handleAdd = () => { setEditing(null); setFormOpen(true) }
@@ -131,9 +152,15 @@ export default function EmployeesPage() {
           <p className="text-sm text-slate-500 mt-0.5">共 {total} 名员工</p>
         </div>
         {canManage && (
-          <Button onClick={handleAdd} className="bg-red-600 hover:bg-red-700 text-white">
-            <Plus size={16} /> 新增员工
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExport} disabled={isExporting} className="gap-1.5">
+              <Download size={15} />
+              {isExporting ? '导出中...' : '导出'}
+            </Button>
+            <Button onClick={handleAdd} className="bg-red-600 hover:bg-red-700 text-white">
+              <Plus size={16} /> 新增员工
+            </Button>
+          </div>
         )}
       </div>
 
