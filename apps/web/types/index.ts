@@ -1,6 +1,6 @@
 export type Gender = 'MALE' | 'FEMALE'
 export type UserRole = 'ADMIN' | 'DEPT_MANAGER' | 'STAFF'
-export type InspectionFrequency = 'QUARTERLY' | 'MONTHLY'
+export type InspectionFrequency = 'QUARTERLY' | 'MONTHLY' | 'TWICE_MONTHLY' | 'ANNUALLY'
 export type ExperimentFrequency = 'QUARTERLY' | 'MONTHLY'
 
 export interface Employee {

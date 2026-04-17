@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Plus, Search, Pencil, Trash2, Eye, Building2, Phone, Calendar } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, Eye, Building2, Phone, Calendar, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { CustomerForm } from '@/components/customers/customer-form'
 import { useAuth } from '@/contexts/auth-context'
-import { formatDate } from '@/lib/utils'
+import { formatDate, exportToCsv } from '@/lib/utils'
 import apiClient from '@/lib/api-client'
 import type { Customer } from '@/types'
 
@@ -45,6 +45,7 @@ export default function CustomersPage() {
   const [editing, setEditing] = useState<Customer | null>(null)
   const [deleting, setDeleting] = useState<Customer | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   const fetchCustomers = useCallback(async () => {
     setIsLoading(true)
@@ -103,6 +104,38 @@ export default function CustomersPage() {
     }
   }
 
+  const handleExport = async () => {
+    setIsExporting(true)
+    try {
+      const params: Record<string, string | number | undefined> = {
+        page: 1,
+        pageSize: 500,
+        companyName: companyName || undefined,
+        contactPerson: contactPerson || undefined,
+        contactInfo: contactInfo || undefined,
+      }
+      const data = await apiClient.get<CustomersListResponse>('/customers', { params })
+      const rows = data.items.map((c) => [
+        c.companyName,
+        c.contactPerson,
+        c.contactInfo,
+        c.projectOverview ?? '',
+        formatDate(c.lastPatrolTime) || '',
+        formatDate(c.createdAt),
+      ])
+      exportToCsv(
+        `客户列表_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '')}.csv`,
+        ['企业名称', '联系人', '联系方式', '项目概况', '最近巡视', '创建时间'],
+        rows,
+      )
+      toast.success(`已导出 ${rows.length} 条记录`)
+    } catch (err: unknown) {
+      toast.error(typeof err === 'string' ? err : '导出失败')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   const handleDelete = async () => {
     if (!deleting) return
     try {
@@ -123,12 +156,23 @@ export default function CustomersPage() {
           <p className="text-sm text-slate-500 mt-0.5">共 {total} 家客户</p>
         </div>
         {canManage && (
-          <Button
-            onClick={() => { setEditing(null); setFormOpen(true) }}
-            className="bg-red-600 hover:bg-red-700"
-          >
-            <Plus size={16} /> 新增客户
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleExport}
+              disabled={isExporting}
+              className="gap-1.5"
+            >
+              <Download size={15} />
+              {isExporting ? '导出中...' : '导出'}
+            </Button>
+            <Button
+              onClick={() => { setEditing(null); setFormOpen(true) }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              <Plus size={16} /> 新增客户
+            </Button>
+          </div>
         )}
       </div>
 
