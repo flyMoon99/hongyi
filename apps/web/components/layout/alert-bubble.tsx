@@ -2,52 +2,75 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, Bell, ClipboardCheck, FlaskConical, X } from 'lucide-react'
+import { AlertTriangle, Bell, ClipboardCheck, FlaskConical, Flame, X } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
+import { getPrimaryBtnClass } from '@/lib/theme'
 import { apiClient } from '@/lib/api-client'
 import { getDaysUntil } from '@/lib/utils'
-import type { Inspection, Experiment } from '@/types'
+import type { Inspection, Experiment, FireInspection } from '@/types'
 
 const URGENT_DAYS = 7
 
 export function AlertBubble() {
   const { user } = useAuth()
+  const primaryBtn = getPrimaryBtnClass(user?.role, user?.company)
   const router = useRouter()
 
   const [inspCount, setInspCount] = useState(0)
   const [expCount, setExpCount] = useState(0)
+  const [fireCount, setFireCount] = useState(0)
   const [minimized, setMinimized] = useState(false)
   const [popupOpen, setPopupOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const urgentCount = inspCount + expCount
+  const isStateGrid = user?.role === 'ADMIN' || user?.company === 'STATE_GRID'
+  const urgentCount = inspCount + expCount + fireCount
 
   const fetchUrgent = useCallback(async () => {
     if (!user) return
     try {
-      const [inspRes, expRes] = await Promise.all([
-        apiClient.get<{ items: Inspection[] }>(`/inspections?pageSize=200&search=${encodeURIComponent(user.name)}`),
-        apiClient.get<{ items: Experiment[] }>(`/experiments?pageSize=200&search=${encodeURIComponent(user.name)}`),
-      ])
+      const fetches: Promise<void>[] = []
 
-      // API already filters by responsible person name via search param,
-      // so just check the date here
-      const urgentInsp = (inspRes.items ?? []).filter((i) => {
-        const days = getDaysUntil(i.nextInspectionDate)
-        return days !== null && days >= 0 && days <= URGENT_DAYS
-      })
+      // 巡检 + 试验：皓鼎弘毅 员工及 ADMIN 均可见
+      if (!isStateGrid || user.role === 'ADMIN') {
+        fetches.push(
+          Promise.all([
+            apiClient.get<{ items: Inspection[] }>(`/inspections?pageSize=200&search=${encodeURIComponent(user.name)}`),
+            apiClient.get<{ items: Experiment[] }>(`/experiments?pageSize=200&search=${encodeURIComponent(user.name)}`),
+          ]).then(([inspRes, expRes]) => {
+            const urgentInsp = (inspRes.items ?? []).filter((i) => {
+              const days = getDaysUntil(i.nextInspectionDate)
+              return days !== null && days >= 0 && days <= URGENT_DAYS
+            })
+            const urgentExp = (expRes.items ?? []).filter((e) => {
+              const days = getDaysUntil(e.nextTestDate)
+              return days !== null && days >= 0 && days <= URGENT_DAYS
+            })
+            setInspCount(urgentInsp.length)
+            setExpCount(urgentExp.length)
+          }).catch(() => {})
+        )
+      }
 
-      const urgentExp = (expRes.items ?? []).filter((e) => {
-        const days = getDaysUntil(e.nextTestDate)
-        return days !== null && days >= 0 && days <= URGENT_DAYS
-      })
+      // 消防巡检：国家电网 员工及 ADMIN 均可见
+      if (isStateGrid) {
+        fetches.push(
+          apiClient.get<{ items: FireInspection[] }>('/fire-inspections?pageSize=200')
+            .then((res) => {
+              const urgentFire = (res.items ?? []).filter((f) => {
+                const days = getDaysUntil(f.nextInspectionDate)
+                return days !== null && days >= 0 && days <= URGENT_DAYS
+              })
+              setFireCount(urgentFire.length)
+            }).catch(() => {})
+        )
+      }
 
-      setInspCount(urgentInsp.length)
-      setExpCount(urgentExp.length)
+      await Promise.all(fetches)
     } catch {
       // silently ignore – bubble is non-critical
     }
-  }, [user])
+  }, [user, isStateGrid])
 
   // Initial fetch + auto-refresh every 5 minutes
   useEffect(() => {
@@ -87,7 +110,7 @@ export function AlertBubble() {
                    hover:bg-slate-600 active:scale-95 transition-all"
       >
         <Bell size={16} />
-        <span className="text-[11px] font-bold leading-none text-red-300">
+        <span className={`text-[11px] font-bold leading-none ${isStateGrid ? 'text-teal-300' : 'text-red-300'}`}>
           {urgentCount > 99 ? '99+' : urgentCount}
         </span>
       </button>
@@ -100,13 +123,19 @@ export function AlertBubble() {
 
       {/* Ripple ring 1 – slow & soft */}
       <span
-        className="absolute inset-0 rounded-full bg-red-400 animate-ping pointer-events-none"
-        style={{ animationDuration: '2.5s', animationDelay: '0ms', opacity: 0.35 }}
+        className="absolute inset-0 rounded-full animate-ping pointer-events-none"
+        style={{
+          animationDuration: '2.5s', animationDelay: '0ms', opacity: 0.35,
+          backgroundColor: isStateGrid ? '#00A87E' : '#f87171',
+        }}
       />
       {/* Ripple ring 2 – staggered offset */}
       <span
-        className="absolute inset-0 rounded-full bg-red-300 animate-ping pointer-events-none"
-        style={{ animationDuration: '2.5s', animationDelay: '1.2s', opacity: 0.22 }}
+        className="absolute inset-0 rounded-full animate-ping pointer-events-none"
+        style={{
+          animationDuration: '2.5s', animationDelay: '1.2s', opacity: 0.22,
+          backgroundColor: isStateGrid ? '#00c896' : '#fca5a5',
+        }}
       />
 
       {/* Minimize button (top-right × ) */}
@@ -123,9 +152,7 @@ export function AlertBubble() {
       {/* Main circle – always opens popup */}
       <button
         onClick={() => setPopupOpen((v) => !v)}
-        className="relative z-10 flex flex-col items-center justify-center
-                   w-16 h-16 rounded-full bg-red-600 text-white shadow-xl
-                   hover:bg-red-700 active:scale-95 transition-transform"
+        className={`relative z-10 flex flex-col items-center justify-center w-16 h-16 rounded-full ${primaryBtn} shadow-xl active:scale-95 transition-transform`}
       >
         <AlertTriangle size={18} />
         <span className="text-xs font-bold leading-none mt-0.5">{urgentCount} 条</span>
@@ -175,6 +202,26 @@ export function AlertBubble() {
               <span className="ml-auto text-xs font-bold text-red-500 bg-red-50
                                px-1.5 py-0.5 rounded-full">
                 {expCount} 条
+              </span>
+            </button>
+          )}
+
+          {fireCount > 0 && (
+            <button
+              onClick={() => {
+                setPopupOpen(false)
+                router.push('/fire-inspections')
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5
+                         hover:bg-slate-50 transition-colors text-left"
+            >
+              <span className="flex items-center justify-center w-7 h-7 rounded-full bg-teal-50">
+                <Flame size={14} className="text-[#008C6A]" />
+              </span>
+              <span className="text-sm text-slate-700">消防巡检</span>
+              <span className="ml-auto text-xs font-bold text-[#008C6A] bg-teal-50
+                               px-1.5 py-0.5 rounded-full">
+                {fireCount} 条
               </span>
             </button>
           )}

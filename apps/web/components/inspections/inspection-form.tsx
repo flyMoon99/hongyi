@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/auth-context'
+import { getPrimaryBtnClass } from '@/lib/theme'
 import type { Inspection, Customer, Employee } from '@/types'
 
 const schema = z.object({
@@ -45,6 +46,7 @@ export function InspectionForm({ open, onClose, onSave, inspection, isSaving }: 
   const isEdit = !!inspection
   const { user } = useAuth()
   const isStaff = user?.role === 'STAFF'
+  const primaryBtn = getPrimaryBtnClass(user?.role, user?.company)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
 
@@ -192,7 +194,7 @@ export function InspectionForm({ open, onClose, onSave, inspection, isSaving }: 
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={onClose}>取消</Button>
-            <Button type="submit" disabled={isSaving} className="bg-red-600 hover:bg-red-700">
+            <Button type="submit" disabled={isSaving} className={primaryBtn}>
               {isSaving ? (
                 <span className="flex items-center gap-2">
                   <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />

@@ -3,10 +3,11 @@ import { ExperimentsService } from './experiments.service'
 import { CreateExperimentDto } from './dto/create-experiment.dto'
 import { UpdateExperimentDto } from './dto/update-experiment.dto'
 import { JwtAuthGuard } from '../common/jwt-auth.guard'
-import { RolesGuard } from '../common/roles.guard'
+import { CompanyRoleGuard, RequireModule } from '../common/company-role.guard'
 import { CurrentUser } from '../common/current-user.decorator'
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyRoleGuard)
+@RequireModule('experiments')
 @Controller('experiments')
 export class ExperimentsController {
   constructor(private service: ExperimentsService) {}
@@ -17,8 +18,9 @@ export class ExperimentsController {
     @Query('pageSize') pageSize = '10',
     @Query('customerId') customerId?: string,
     @Query('search') search?: string,
+    @CurrentUser() user?: any,
   ) {
-    return this.service.findAll(+page, +pageSize, customerId, search)
+    return this.service.findAll(+page, +pageSize, customerId, search, user?.company)
   }
 
   @Get(':id')
@@ -28,7 +30,7 @@ export class ExperimentsController {
 
   @Post()
   create(@Body() dto: CreateExperimentDto, @CurrentUser() user: any) {
-    return this.service.create(dto, user.id)
+    return this.service.create(dto, user.id, user.company)
   }
 
   @Put(':id')
@@ -36,7 +38,6 @@ export class ExperimentsController {
     return this.service.update(id, dto, user.id)
   }
 
-  @UseGuards(RolesGuard)
   @Delete(':id')
   remove(@Param('id') id: string, @CurrentUser() user: any) {
     return this.service.remove(id, user.id, user.role)

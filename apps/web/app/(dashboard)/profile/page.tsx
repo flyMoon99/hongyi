@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/contexts/auth-context'
+import { getPrimaryBtnClass } from '@/lib/theme'
 import { ROLE_LABELS } from '@/types'
 import apiClient from '@/lib/api-client'
 
@@ -38,6 +39,7 @@ type PasswordForm = z.infer<typeof passwordSchema>
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth()
+  const primaryBtn = getPrimaryBtnClass(user?.role, user?.company)
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar || '')
   const [isSaving, setIsSaving] = useState(false)
   const [isChangingPwd, setIsChangingPwd] = useState(false)
@@ -133,7 +135,7 @@ export default function ProfilePage() {
                 <button
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-md transition-colors"
+                  className={`absolute -bottom-1 -right-1 ${primaryBtn} rounded-full p-1.5 shadow-md transition-colors`}
                 >
                   <Camera size={12} />
                 </button>
@@ -179,7 +181,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={isSaving} className="bg-red-600 hover:bg-red-700 text-white">
+              <Button type="submit" disabled={isSaving} className={primaryBtn}>
                 {isSaving ? (
                   <span className="flex items-center gap-2">
                     <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />

@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
+import { Company } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateCustomerDto } from './dto/create-customer.dto'
 import { UpdateCustomerDto } from './dto/update-customer.dto'
@@ -13,8 +14,10 @@ export class CustomersService {
     companyName?: string,
     contactPerson?: string,
     contactInfo?: string,
+    company?: Company,
   ) {
     const where: any = { isDeleted: false }
+    if (company) where.company = company
     if (companyName) where.companyName = { contains: companyName }
     if (contactPerson) where.contactPerson = { contains: contactPerson }
     if (contactInfo) where.contactInfo = { contains: contactInfo }
@@ -48,11 +51,12 @@ export class CustomersService {
     return customer
   }
 
-  async create(dto: CreateCustomerDto, operatorId: string) {
+  async create(dto: CreateCustomerDto, operatorId: string, company?: Company) {
     const customer = await this.prisma.customer.create({
       data: {
         ...dto,
         lastPatrolTime: dto.lastPatrolTime ? new Date(dto.lastPatrolTime) : undefined,
+        company: company ?? 'HAODING_HONGYI',
       },
     })
     await this.prisma.customerLog.create({

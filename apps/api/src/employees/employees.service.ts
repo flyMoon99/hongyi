@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common'
 import * as bcrypt from 'bcryptjs'
-import { UserRole } from '@prisma/client'
+import { Company, UserRole } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateEmployeeDto } from './dto/create-employee.dto'
 import { UpdateEmployeeDto } from './dto/update-employee.dto'
@@ -13,6 +13,7 @@ const SAFE_SELECT = {
   avatar: true,
   email: true,
   role: true,
+  company: true,
   isDeleted: true,
   createdAt: true,
   updatedAt: true,
@@ -21,6 +22,7 @@ const SAFE_SELECT = {
 interface OperatorUser {
   id: string
   role: UserRole
+  company: Company | null
 }
 
 @Injectable()
@@ -33,14 +35,24 @@ export class EmployeesService {
     }
   }
 
-  private ensureCanManageTarget(operatorRole: UserRole, targetRole: UserRole) {
-    if (operatorRole !== 'ADMIN' && targetRole !== 'STAFF') {
-      throw new ForbiddenException('部门负责人只能管理职员账号')
-    }
+  private ensureCanManageTarget(operator: OperatorUser, target: { role: UserRole; company: Company | null }) {
+    if (operator.role === 'ADMIN') return
+    if (operator.role !== 'DEPT_MANAGER') throw new ForbiddenException('权限不足')
+    if (target.role !== 'STAFF') throw new ForbiddenException('部门负责人只能管理职员账号')
+    if (target.company !== operator.company) throw new ForbiddenException('无权操作其他公司员工')
   }
 
-  async findAll(page = 1, pageSize = 10, search?: string) {
+  async findAll(page = 1, pageSize = 10, search?: string, company?: Company, operator?: OperatorUser) {
     const where: any = { isDeleted: false }
+
+    // 非超管只能看本公司
+    if (operator && operator.role !== 'ADMIN') {
+      where.company = operator.company
+    } else if (company) {
+      // 超管可以按公司筛选
+      where.company = company
+    }
+
     if (search) {
       where.OR = [
         { name: { contains: search } },
@@ -84,6 +96,12 @@ export class EmployeesService {
       },
     })
     if (!employee || employee.isDeleted) throw new NotFoundException('员工不存在')
+
+    // 部门负责人只能查看本公司员工
+    if (requester.role === 'DEPT_MANAGER' && employee.company !== requester.company) {
+      throw new ForbiddenException('无权查看其他公司员工信息')
+    }
+
     return employee
   }
 
@@ -93,9 +111,18 @@ export class EmployeesService {
 
     this.ensureCanAssignRole(operator.role, dto.role ?? 'STAFF')
 
+    // 部门负责人强制写入本公司
+    let company = dto.company
+    if (operator.role === 'DEPT_MANAGER') {
+      company = operator.company ?? undefined
+    }
+    if (operator.role !== 'ADMIN' && !company) {
+      throw new ForbiddenException('所属公司不能为空')
+    }
+
     const hashed = await bcrypt.hash(dto.password, 10)
     const employee = await this.prisma.employee.create({
-      data: { ...dto, password: hashed },
+      data: { ...dto, password: hashed, company: company ?? null },
       select: SAFE_SELECT,
     })
     await this.prisma.employeeLog.create({
@@ -113,10 +140,15 @@ export class EmployeesService {
     const existing = await this.prisma.employee.findUnique({ where: { id } })
     if (!existing || existing.isDeleted) throw new NotFoundException('员工不存在')
 
-    this.ensureCanManageTarget(operator.role, existing.role)
+    this.ensureCanManageTarget(operator, existing)
 
     if (dto.role) {
       this.ensureCanAssignRole(operator.role, dto.role)
+    }
+
+    // 部门负责人不能修改公司归属
+    if (operator.role === 'DEPT_MANAGER') {
+      delete dto.company
     }
 
     if (dto.phone) {
@@ -158,7 +190,7 @@ export class EmployeesService {
     const existing = await this.prisma.employee.findUnique({ where: { id } })
     if (!existing || existing.isDeleted) throw new NotFoundException('员工不存在')
 
-    this.ensureCanManageTarget(operator.role, existing.role)
+    this.ensureCanManageTarget(operator, existing)
 
     await this.prisma.employee.update({
       where: { id },

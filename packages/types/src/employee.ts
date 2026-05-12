@@ -1,5 +1,6 @@
 export type Gender = 'MALE' | 'FEMALE'
 export type UserRole = 'ADMIN' | 'DEPT_MANAGER' | 'STAFF'
+export type Company = 'HAODING_HONGYI' | 'STATE_GRID'
 
 export interface Employee {
   id: string
@@ -9,6 +10,7 @@ export interface Employee {
   avatar?: string | null
   email?: string | null
   role: UserRole
+  company: Company | null
   isDeleted: boolean
   createdAt: string
   updatedAt: string
@@ -34,6 +36,7 @@ export interface CreateEmployeeDto {
   avatar?: string
   email?: string
   role?: UserRole
+  company?: Company
 }
 
 export interface UpdateEmployeeDto {
@@ -44,4 +47,5 @@ export interface UpdateEmployeeDto {
   avatar?: string
   email?: string
   role?: UserRole
+  company?: Company
 }

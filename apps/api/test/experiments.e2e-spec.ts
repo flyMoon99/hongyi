@@ -10,8 +10,9 @@ const prisma = new PrismaClient()
 describe('Experiments API (e2e)', () => {
   let app: INestApplication
   let adminToken: string
-  let deptToken: string
-  let staffToken: string
+  let hdDeptToken: string
+  let hdStaffToken: string
+  let gridDeptToken: string
   let createdId: string
 
   beforeAll(async () => {
@@ -32,10 +33,11 @@ describe('Experiments API (e2e)', () => {
         .send({ phone, password })
         .then((r) => r.body.accessToken as string)
 
-    ;[adminToken, deptToken, staffToken] = await Promise.all([
+    ;[adminToken, hdDeptToken, hdStaffToken, gridDeptToken] = await Promise.all([
       login(SEEDS.admin.phone, SEEDS.admin.password),
-      login(SEEDS.dept.phone, SEEDS.dept.password),
-      login(SEEDS.staff.phone, SEEDS.staff.password),
+      login(SEEDS.hdDept.phone, SEEDS.hdDept.password),
+      login(SEEDS.hdStaff.phone, SEEDS.hdStaff.password),
+      login(SEEDS.gridDept.phone, SEEDS.gridDept.password),
     ])
   })
 
@@ -49,48 +51,64 @@ describe('Experiments API (e2e)', () => {
     await request(app.getHttpServer()).get('/api/experiments').expect(401)
   })
 
-  // ── 2. STAFF can read list ────────────────────────────────────────────
-  it('GET /experiments → 200 + items array for STAFF', async () => {
+  // ── 2. ADMIN → 403（仅允许员工模块）────────────────────────────────
+  it('GET /experiments → 403 for ADMIN role', async () => {
+    await request(app.getHttpServer())
+      .get('/api/experiments')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(403)
+  })
+
+  // ── 3. STATE_GRID DEPT_MANAGER → 403 ────────────────────────────────
+  it('GET /experiments → 403 for STATE_GRID DEPT_MANAGER', async () => {
+    await request(app.getHttpServer())
+      .get('/api/experiments')
+      .set('Authorization', `Bearer ${gridDeptToken}`)
+      .expect(403)
+  })
+
+  // ── 4. HAODING STAFF 可以读取列表 ────────────────────────────────────
+  it('GET /experiments → 200 + items array for HAODING STAFF', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/experiments')
-      .set('Authorization', `Bearer ${staffToken}`)
+      .set('Authorization', `Bearer ${hdStaffToken}`)
       .expect(200)
     expect(res.body).toHaveProperty('items')
     expect(Array.isArray(res.body.items)).toBe(true)
     expect(res.body.total).toBeGreaterThanOrEqual(1)
   })
 
-  // ── 3. ADMIN can read list ────────────────────────────────────────────
-  it('GET /experiments → 200 + total >= 1 for ADMIN', async () => {
+  // ── 5. HAODING DEPT_MANAGER 可以读取列表 ─────────────────────────────
+  it('GET /experiments → 200 + total >= 1 for HAODING DEPT_MANAGER', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/experiments')
-      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Authorization', `Bearer ${hdDeptToken}`)
       .expect(200)
     expect(res.body.total).toBeGreaterThanOrEqual(1)
   })
 
-  // ── 4. GET detail → 200 + responsiblePerson + logs ───────────────────
-  it('GET /experiments/:id → 200 + responsiblePerson + logs array', async () => {
+  // ── 6. GET detail → 200 + responsiblePerson + logs ───────────────────
+  it('GET /experiments/:id → 200 + responsiblePerson + logs by HAODING DEPT_MANAGER', async () => {
     const res = await request(app.getHttpServer())
       .get(`/api/experiments/${SEEDS.experiment.id}`)
-      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Authorization', `Bearer ${hdDeptToken}`)
       .expect(200)
     expect(res.body.id).toBe(SEEDS.experiment.id)
     expect(res.body.responsiblePerson).toBeDefined()
-    expect(res.body.responsiblePerson.id).toBe(SEEDS.staff.id)
+    expect(res.body.responsiblePerson.id).toBe(SEEDS.hdStaff.id)
     expect(Array.isArray(res.body.logs)).toBe(true)
     expect(res.body.customer).toBeDefined()
     expect(res.body.customer.companyName).toBe(SEEDS.customer.companyName)
   })
 
-  // ── 5. POST missing responsiblePersonId → 400 ────────────────────────
+  // ── 7. POST missing responsiblePersonId → 400 ────────────────────────
   it('POST /experiments → 400 when responsiblePersonId is missing', async () => {
     await request(app.getHttpServer())
       .post('/api/experiments')
-      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Authorization', `Bearer ${hdDeptToken}`)
       .send({
         customerId: SEEDS.customer.id,
-        frequency: 'MONTHLY',
+        frequency: 'QUARTERLY',
         powerEquipment: '绝缘电阻测试',
         contactPerson: '测试员',
         contactInfo: '13900000001',
@@ -98,32 +116,30 @@ describe('Experiments API (e2e)', () => {
       .expect(400)
   })
 
-  // ── 6. STAFF can create experiment ───────────────────────────────────
-  it('POST /experiments → 201 by STAFF', async () => {
-    const res = await request(app.getHttpServer())
+  // ── 8. HAODING STAFF 无法新增 → 403 ─────────────────────────────────
+  it('POST /experiments → 403 for HAODING STAFF', async () => {
+    await request(app.getHttpServer())
       .post('/api/experiments')
-      .set('Authorization', `Bearer ${staffToken}`)
+      .set('Authorization', `Bearer ${hdStaffToken}`)
       .send({
         customerId: SEEDS.customer.id,
-        responsiblePersonId: SEEDS.staff.id,
-        frequency: 'MONTHLY',
-        powerEquipment: '10kV电缆绝缘测试',
+        responsiblePersonId: SEEDS.hdStaff.id,
+        frequency: 'QUARTERLY',
+        powerEquipment: '电缆绝缘测试',
         contactPerson: '职员联系人',
         contactInfo: '13900000002',
       })
-      .expect(201)
-    expect(res.body.id).toBeDefined()
-    expect(res.body.responsiblePerson.id).toBe(SEEDS.staff.id)
+      .expect(403)
   })
 
-  // ── 7. ADMIN can create experiment and stores id ──────────────────────
-  it('POST /experiments → 201 by ADMIN, stores createdId', async () => {
+  // ── 9. HAODING DEPT_MANAGER 新增试验 → 201 + company=HAODING_HONGYI ─
+  it('POST /experiments → 201 by HAODING DEPT_MANAGER, stores createdId', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/experiments')
-      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Authorization', `Bearer ${hdDeptToken}`)
       .send({
         customerId: SEEDS.customer.id,
-        responsiblePersonId: SEEDS.dept.id,
+        responsiblePersonId: SEEDS.hdStaff.id,
         frequency: 'QUARTERLY',
         powerEquipment: '110kV GIS设备耐压试验',
         contactPerson: '管理联系人',
@@ -133,63 +149,73 @@ describe('Experiments API (e2e)', () => {
       .expect(201)
     createdId = res.body.id
     expect(createdId).toBeDefined()
+    expect(res.body.company).toBe('HAODING_HONGYI')
   })
 
-  // ── 8. STAFF can update experiment ───────────────────────────────────
-  it('PUT /experiments/:id → 200 by STAFF, fields updated', async () => {
-    const res = await request(app.getHttpServer())
-      .put(`/api/experiments/${createdId}`)
-      .set('Authorization', `Bearer ${staffToken}`)
-      .send({ contactPerson: '职员已更新' })
-      .expect(200)
-    expect(res.body.contactPerson).toBe('职员已更新')
-  })
-
-  // ── 9. DEPT_MANAGER can update experiment ────────────────────────────
-  it('PUT /experiments/:id → 200 by DEPT_MANAGER, powerEquipment updated', async () => {
-    const res = await request(app.getHttpServer())
-      .put(`/api/experiments/${createdId}`)
-      .set('Authorization', `Bearer ${deptToken}`)
-      .send({ powerEquipment: '部门负责人已修改设备' })
-      .expect(200)
-    expect(res.body.powerEquipment).toBe('部门负责人已修改设备')
-  })
-
-  // ── 10. STAFF cannot delete → 403 ────────────────────────────────────
-  it('DELETE /experiments/:id → 403 for STAFF', async () => {
+  // ── 10. HAODING STAFF 无法修改 → 403 ────────────────────────────────
+  it('PUT /experiments/:id → 403 for HAODING STAFF', async () => {
     await request(app.getHttpServer())
-      .delete(`/api/experiments/${createdId}`)
-      .set('Authorization', `Bearer ${staffToken}`)
+      .put(`/api/experiments/${createdId}`)
+      .set('Authorization', `Bearer ${hdStaffToken}`)
+      .send({ contactPerson: '职员越权' })
       .expect(403)
   })
 
-  // ── 11. ADMIN soft-delete succeeds ───────────────────────────────────
-  it('DELETE /experiments/:id → 200 soft-delete by ADMIN', async () => {
+  // ── 11. HAODING DEPT_MANAGER 可以修改 → 200 ─────────────────────────
+  it('PUT /experiments/:id → 200 by HAODING DEPT_MANAGER, fields updated', async () => {
+    const res = await request(app.getHttpServer())
+      .put(`/api/experiments/${createdId}`)
+      .set('Authorization', `Bearer ${hdDeptToken}`)
+      .send({ contactPerson: '负责人已更新', powerEquipment: '已修改设备' })
+      .expect(200)
+    expect(res.body.contactPerson).toBe('负责人已更新')
+    expect(res.body.powerEquipment).toBe('已修改设备')
+  })
+
+  // ── 12. HAODING STAFF 无法删除 → 403 ────────────────────────────────
+  it('DELETE /experiments/:id → 403 for HAODING STAFF', async () => {
+    await request(app.getHttpServer())
+      .delete(`/api/experiments/${createdId}`)
+      .set('Authorization', `Bearer ${hdStaffToken}`)
+      .expect(403)
+  })
+
+  // ── 13. HAODING DEPT_MANAGER 软删除 → 200 ───────────────────────────
+  it('DELETE /experiments/:id → 200 soft-delete by HAODING DEPT_MANAGER', async () => {
     const res = await request(app.getHttpServer())
       .delete(`/api/experiments/${createdId}`)
-      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Authorization', `Bearer ${hdDeptToken}`)
       .expect(200)
     expect(res.body.message).toBe('删除成功')
   })
 
-  // ── 12. Soft-deleted record not in list ──────────────────────────────
+  // ── 14. 软删除后不出现在列表中 ───────────────────────────────────────
   it('GET /experiments → soft-deleted record not in items', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/experiments')
-      .set('Authorization', `Bearer ${adminToken}`)
+      .set('Authorization', `Bearer ${hdDeptToken}`)
       .expect(200)
     const ids = res.body.items.map((i: any) => i.id)
     expect(ids).not.toContain(createdId)
   })
 
-  // ── 13. Search by responsible person name ────────────────────────────
-  it('GET /experiments?search=测试职员 → returns matching record', async () => {
+  // ── 15. 搜索参数按负责人姓名生效 ────────────────────────────────────
+  it('GET /experiments?search=皓鼎职员 → returns matching record', async () => {
     const res = await request(app.getHttpServer())
-      .get(`/api/experiments?search=${encodeURIComponent(SEEDS.staff.name)}`)
-      .set('Authorization', `Bearer ${adminToken}`)
+      .get(`/api/experiments?search=${encodeURIComponent(SEEDS.hdStaff.name)}`)
+      .set('Authorization', `Bearer ${hdDeptToken}`)
       .expect(200)
     expect(res.body.total).toBeGreaterThanOrEqual(1)
-    const found = res.body.items.some((i: any) => i.responsiblePerson?.id === SEEDS.staff.id)
+    const found = res.body.items.some((i: any) => i.responsiblePerson?.id === SEEDS.hdStaff.id)
     expect(found).toBe(true)
+  })
+
+  // ── 16. seed 记录详情有 logs 数组 ────────────────────────────────────
+  it('GET /experiments/:id → logs array exists', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/api/experiments/${SEEDS.experiment.id}`)
+      .set('Authorization', `Bearer ${hdStaffToken}`)
+      .expect(200)
+    expect(Array.isArray(res.body.logs)).toBe(true)
   })
 })

@@ -3,10 +3,11 @@ import { InspectionsService } from './inspections.service'
 import { CreateInspectionDto } from './dto/create-inspection.dto'
 import { UpdateInspectionDto } from './dto/update-inspection.dto'
 import { JwtAuthGuard } from '../common/jwt-auth.guard'
-import { RolesGuard } from '../common/roles.guard'
+import { CompanyRoleGuard, RequireModule } from '../common/company-role.guard'
 import { CurrentUser } from '../common/current-user.decorator'
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyRoleGuard)
+@RequireModule('inspections')
 @Controller('inspections')
 export class InspectionsController {
   constructor(private service: InspectionsService) {}
@@ -17,8 +18,9 @@ export class InspectionsController {
     @Query('pageSize') pageSize = '10',
     @Query('customerId') customerId?: string,
     @Query('search') search?: string,
+    @CurrentUser() user?: any,
   ) {
-    return this.service.findAll(+page, +pageSize, customerId, search)
+    return this.service.findAll(+page, +pageSize, customerId, search, user?.company)
   }
 
   @Get(':id')
@@ -28,7 +30,7 @@ export class InspectionsController {
 
   @Post()
   create(@Body() dto: CreateInspectionDto, @CurrentUser() user: any) {
-    return this.service.create(dto, user.id)
+    return this.service.create(dto, user.id, user.company)
   }
 
   @Put(':id')
@@ -36,7 +38,6 @@ export class InspectionsController {
     return this.service.update(id, dto, user.id)
   }
 
-  @UseGuards(RolesGuard)
   @Delete(':id')
   remove(@Param('id') id: string, @CurrentUser() user: any) {
     return this.service.remove(id, user.id, user.role)

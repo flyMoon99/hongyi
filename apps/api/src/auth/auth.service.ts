@@ -14,6 +14,7 @@ const SAFE_SELECT = {
   avatar: true,
   email: true,
   role: true,
+  company: true,
   createdAt: true,
   updatedAt: true,
 }
@@ -54,6 +55,7 @@ export class AuthService {
         avatar: employee.avatar,
         role: employee.role,
         gender: employee.gender,
+        company: employee.company,
       },
     }
   }

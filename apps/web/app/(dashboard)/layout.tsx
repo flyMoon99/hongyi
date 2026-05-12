@@ -6,6 +6,19 @@ import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { AlertBubble } from '@/components/layout/alert-bubble'
 import { useAuth } from '@/contexts/auth-context'
+import { canReadModule } from '@/types'
+
+/** 从路径推断模块名，与 MODULE_POLICY 键对应 */
+function getModuleFromPath(pathname: string): string | null {
+  if (pathname === '/') return 'dashboard'
+  if (pathname.startsWith('/employees')) return 'employees'
+  if (pathname.startsWith('/customers')) return 'customers'
+  if (pathname.startsWith('/inspections')) return 'inspections'
+  if (pathname.startsWith('/experiments')) return 'experiments'
+  if (pathname.startsWith('/station-rooms')) return 'station-rooms'
+  if (pathname.startsWith('/fire-inspections')) return 'fire-inspections'
+  return null
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -13,22 +26,48 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, isLoading } = useAuth()
   const router = useRouter()
 
-  // Close drawer on route change
   useEffect(() => {
     setSidebarOpen(false)
   }, [pathname])
 
-  // Redirect to login if not authenticated
+  // 根据用户所属公司动态更新浏览器 tab 标题
   useEffect(() => {
-    if (!isLoading && !user) {
+    if (!user) return
+    const isHaoding = user.role !== 'ADMIN' && user.company !== 'STATE_GRID'
+    document.title = isHaoding ? '皓鼎弘毅管理后台' : '国家电网管理后台'
+  }, [user])
+
+  useEffect(() => {
+    if (isLoading) return
+    if (!user) {
       router.replace('/login')
+      return
     }
-  }, [isLoading, user, router])
+    // ADMIN 直接跳到员工管理
+    if (user.role === 'ADMIN' && pathname === '/') {
+      router.replace('/employees')
+      return
+    }
+    // 路由权限守卫
+    const mod = getModuleFromPath(pathname)
+    if (mod && mod !== 'dashboard') {
+      if (!canReadModule(user, mod)) {
+        // 跳到第一个有权限的页面
+        if (user.role === 'ADMIN') {
+          router.replace('/employees')
+        } else if (user.company === 'STATE_GRID') {
+          router.replace('/station-rooms')
+        } else {
+          router.replace('/')
+        }
+      }
+    }
+  }, [isLoading, user, pathname, router])
 
   if (isLoading || !user) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
-        <div className="h-8 w-8 rounded-full border-4 border-red-600 border-t-transparent animate-spin" />
+        <div className="h-8 w-8 rounded-full border-4 border-[#008C6A] border-t-transparent animate-spin" />
       </div>
     )
   }

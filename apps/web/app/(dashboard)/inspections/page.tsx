@@ -18,6 +18,7 @@ import { InspectionForm } from '@/components/inspections/inspection-form'
 import { formatDate, getDaysUntil, exportToCsv } from '@/lib/utils'
 import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/auth-context'
+import { getPrimaryBtnClass } from '@/lib/theme'
 import { canManageEmployees } from '@/types'
 import type { Inspection } from '@/types'
 import { cn } from '@/lib/utils'
@@ -39,6 +40,7 @@ const FREQUENCY_VARIANT: Record<string, 'info' | 'success' | 'warning' | 'outlin
 export default function InspectionsPage() {
   const { user } = useAuth()
   const canManage = canManageEmployees(user?.role)
+  const primaryBtn = getPrimaryBtnClass(user?.role, user?.company)
 
   const [inspections, setInspections] = useState<Inspection[]>([])
   const [total, setTotal] = useState(0)
@@ -152,7 +154,7 @@ export default function InspectionsPage() {
               <Download size={15} />
               {isExporting ? '导出中...' : '导出'}
             </Button>
-            <Button onClick={() => { setEditing(null); setFormOpen(true) }} className="bg-red-600 hover:bg-red-700">
+            <Button onClick={() => { setEditing(null); setFormOpen(true) }} className={primaryBtn}>
               <Plus size={16} /> 新增巡检
             </Button>
           </div>

@@ -18,12 +18,14 @@ import { ExperimentForm } from '@/components/experiments/experiment-form'
 import { formatDate, getDaysUntil, cn, exportToCsv } from '@/lib/utils'
 import { apiClient } from '@/lib/api-client'
 import { useAuth } from '@/contexts/auth-context'
+import { getPrimaryBtnClass } from '@/lib/theme'
 import { canManageEmployees } from '@/types'
 import type { Experiment } from '@/types'
 
 export default function ExperimentsPage() {
   const { user } = useAuth()
   const canManage = canManageEmployees(user?.role)
+  const primaryBtn = getPrimaryBtnClass(user?.role, user?.company)
 
   const [experiments, setExperiments] = useState<Experiment[]>([])
   const [total, setTotal] = useState(0)
@@ -139,7 +141,7 @@ export default function ExperimentsPage() {
               <Download size={15} />
               {isExporting ? '导出中...' : '导出'}
             </Button>
-            <Button onClick={() => { setEditing(null); setFormOpen(true) }} className="bg-red-600 hover:bg-red-700">
+            <Button onClick={() => { setEditing(null); setFormOpen(true) }} className={primaryBtn}>
               <Plus size={16} /> 新增试验
             </Button>
           </div>

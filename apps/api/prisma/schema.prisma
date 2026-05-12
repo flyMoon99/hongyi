@@ -18,6 +18,11 @@ enum UserRole {
   STAFF
 }
 
+enum Company {
+  HAODING_HONGYI
+  STATE_GRID
+}
+
 enum InspectionFrequency {
   QUARTERLY
   MONTHLY
@@ -30,20 +35,31 @@ enum ExperimentFrequency {
   MONTHLY
 }
 
+enum FireInspectionFrequency {
+  ANNUALLY
+  QUARTERLY
+}
+
+enum FireEquipment {
+  GAS_SUPPRESSION
+  FIRE_EXTINGUISHER
+}
+
 model Employee {
-  id        String    @id @default(cuid())
-  name      String
-  gender    Gender    @default(MALE)
-  phone     String    @unique
-  password  String
-  tokenVersion Int    @default(0)
-  avatar    String?
-  email     String?
-  role      UserRole  @default(STAFF)
-  isDeleted Boolean   @default(false)
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  name         String
+  gender       Gender    @default(MALE)
+  phone        String    @unique
+  password     String
+  tokenVersion Int       @default(0)
+  avatar       String?
+  email        String?
+  role         UserRole  @default(STAFF)
+  company      Company?
+  isDeleted    Boolean   @default(false)
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   customerLogs           CustomerLog[]
   inspectionLogs         InspectionLog[]
@@ -52,6 +68,8 @@ model Employee {
   operatedLogs           EmployeeLog[]   @relation("operator")
   responsibleInspections Inspection[]
   responsibleExperiments Experiment[]
+  stationRoomLogs        StationRoomLog[]
+  fireInspectionLogs     FireInspectionLog[]
 
   @@map("employees")
 }
@@ -77,6 +95,7 @@ model Customer {
   contactPerson   String
   contactInfo     String
   lastPatrolTime  DateTime?
+  company         Company   @default(HAODING_HONGYI)
   isDeleted       Boolean   @default(false)
   deletedAt       DateTime?
   createdAt       DateTime  @default(now())
@@ -114,6 +133,7 @@ model Inspection {
   safetyTools         String?
   contactPerson       String
   contactInfo         String
+  company             Company             @default(HAODING_HONGYI)
   isDeleted           Boolean             @default(false)
   deletedAt           DateTime?
   createdAt           DateTime            @default(now())
@@ -151,6 +171,7 @@ model Experiment {
   safetyTools         String?
   contactPerson       String
   contactInfo         String
+  company             Company             @default(HAODING_HONGYI)
   isDeleted           Boolean             @default(false)
   deletedAt           DateTime?
   createdAt           DateTime            @default(now())
@@ -175,4 +196,73 @@ model ExperimentLog {
   operator   Employee   @relation(fields: [operatorId], references: [id])
 
   @@map("experiment_logs")
+}
+
+model StationRoom {
+  id              String    @id @default(cuid())
+  name            String
+  remark          String?
+  contactPerson   String
+  contactInfo     String
+  company         Company   @default(STATE_GRID)
+  isDeleted       Boolean   @default(false)
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  fireInspections FireInspection[]
+  logs            StationRoomLog[]
+
+  @@map("station_rooms")
+}
+
+model StationRoomLog {
+  id            String   @id @default(cuid())
+  stationRoomId String
+  action        String
+  detail        String?
+  operatorId    String
+  createdAt     DateTime @default(now())
+
+  stationRoom StationRoom @relation(fields: [stationRoomId], references: [id], onDelete: Cascade)
+  operator    Employee    @relation(fields: [operatorId], references: [id])
+
+  @@map("station_room_logs")
+}
+
+model FireInspection {
+  id                  String                  @id @default(cuid())
+  stationRoomId       String
+  frequency           FireInspectionFrequency @default(ANNUALLY)
+  responsiblePerson   String
+  equipment           FireEquipment[]
+  lastInspectionDate  DateTime?
+  nextInspectionDate  DateTime?
+  remark              String?
+  contactPerson       String
+  contactInfo         String
+  company             Company                 @default(STATE_GRID)
+  isDeleted           Boolean                 @default(false)
+  deletedAt           DateTime?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+
+  stationRoom StationRoom         @relation(fields: [stationRoomId], references: [id], onDelete: Cascade)
+  logs        FireInspectionLog[]
+
+  @@map("fire_inspections")
+}
+
+model FireInspectionLog {
+  id               String   @id @default(cuid())
+  fireInspectionId String
+  action           String
+  detail           String?
+  operatorId       String
+  createdAt        DateTime @default(now())
+
+  fireInspection FireInspection @relation(fields: [fireInspectionId], references: [id], onDelete: Cascade)
+  operator       Employee       @relation(fields: [operatorId], references: [id])
+
+  @@map("fire_inspection_logs")
 }

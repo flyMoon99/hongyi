@@ -16,12 +16,18 @@ import {
 import { useAuth } from '@/contexts/auth-context'
 import { ROLE_LABELS } from '@/types'
 
+function isStateGridUser(role?: string, company?: string | null): boolean {
+  return role === 'ADMIN' || company === 'STATE_GRID'
+}
+
 const breadcrumbMap: Record<string, string> = {
   '/': '仪表盘',
   '/employees': '员工管理',
   '/customers': '客户管理',
   '/inspections': '巡检管理',
   '/experiments': '试验管理',
+  '/station-rooms': '站室管理',
+  '/fire-inspections': '消防巡检',
   '/profile': '个人信息',
 }
 
@@ -50,11 +56,16 @@ export function Header({ onMenuClick }: HeaderProps) {
   const [userMenuMounted, setUserMenuMounted] = React.useState(false)
   React.useEffect(() => setUserMenuMounted(true), [])
 
+  const stateGrid = isStateGridUser(user?.role, user?.company)
+
   const userTriggerInner = (
     <>
       <Avatar className="h-8 w-8">
         <AvatarImage src={user?.avatar || ''} />
-        <AvatarFallback className="bg-red-100 text-red-600 text-xs font-semibold">
+        <AvatarFallback
+          className={stateGrid ? 'text-xs font-semibold' : 'bg-red-100 text-red-600 text-xs font-semibold'}
+          style={stateGrid ? { background: '#D0F0E8', color: '#008C6A' } : undefined}
+        >
           {user?.name?.slice(0, 1) || 'U'}
         </AvatarFallback>
       </Avatar>

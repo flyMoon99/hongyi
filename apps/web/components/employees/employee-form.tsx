@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { getPrimaryBtnClass } from '@/lib/theme'
 import { canAssignEmployeeRole } from '@/types'
-import type { Employee, EmployeeFormValues, UserRole } from '@/types'
+import type { Company, CurrentUser, Employee, EmployeeFormValues, UserRole } from '@/types'
 
 const schema = z.object({
   name: z.string().min(1, '姓名不能为空'),
@@ -19,6 +20,7 @@ const schema = z.object({
   password: z.string().min(6, '密码至少6位').optional().or(z.literal('')),
   email: z.string().email('邮箱格式不正确').optional().or(z.literal('')),
   role: z.enum(['ADMIN', 'DEPT_MANAGER', 'STAFF']),
+  company: z.enum(['HAODING_HONGYI', 'STATE_GRID']).optional(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -28,6 +30,7 @@ interface Props {
   onClose: () => void
   onSave: (data: EmployeeFormValues) => Promise<void>
   employee?: Employee | null
+  currentUser?: CurrentUser | null
   currentUserRole?: UserRole
   isSaving?: boolean
 }
@@ -38,8 +41,10 @@ const roleOptions: Array<{ value: FormData['role']; label: string }> = [
   { value: 'STAFF', label: '职员' },
 ]
 
-export function EmployeeForm({ open, onClose, onSave, employee, currentUserRole, isSaving }: Props) {
+export function EmployeeForm({ open, onClose, onSave, employee, currentUser, currentUserRole, isSaving }: Props) {
   const isEdit = !!employee
+  const isAdmin = currentUserRole === 'ADMIN'
+  const primaryBtn = getPrimaryBtnClass(currentUser?.role, currentUser?.company)
   const {
     register,
     handleSubmit,
@@ -62,15 +67,18 @@ export function EmployeeForm({ open, onClose, onSave, employee, currentUserRole,
           email: employee.email || '',
           role: employee.role,
           password: '',
+          company: employee.company ?? undefined,
         })
       } else {
-        reset({ name: '', gender: 'MALE', phone: '', email: '', role: 'STAFF', password: '' })
+        const defaultCompany = isAdmin ? undefined : (currentUser?.company ?? undefined)
+        reset({ name: '', gender: 'MALE', phone: '', email: '', role: 'STAFF', password: '', company: defaultCompany })
       }
     }
-  }, [open, employee, reset])
+  }, [open, employee, reset, isAdmin, currentUser])
 
   const gender = watch('gender')
   const role = watch('role')
+  const company = watch('company')
   const availableRoles = roleOptions.filter((item) => canAssignEmployeeRole(currentUserRole, item.value))
 
   return (
@@ -119,21 +127,41 @@ export function EmployeeForm({ open, onClose, onSave, employee, currentUserRole,
             {errors.email && <p className="text-red-500 text-xs">{errors.email.message}</p>}
           </div>
 
-          <div className="space-y-1.5">
-            <Label>角色 <span className="text-red-500">*</span></Label>
-            <Select value={role} onValueChange={(v) => setValue('role', v as FormData['role'])}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {availableRoles.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>角色 <span className="text-red-500">*</span></Label>
+              <Select value={role} onValueChange={(v) => setValue('role', v as FormData['role'])}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {availableRoles.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>所属公司 {isAdmin && <span className="text-red-500">*</span>}</Label>
+              {isAdmin ? (
+                <Select value={company ?? ''} onValueChange={(v) => setValue('company', v as Company)}>
+                  <SelectTrigger><SelectValue placeholder="请选择公司" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HAODING_HONGYI">皓鼎弘毅</SelectItem>
+                    <SelectItem value="STATE_GRID">国家电网</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  readOnly
+                  value={currentUser?.company === 'STATE_GRID' ? '国家电网' : '皓鼎弘毅'}
+                  className="bg-slate-50 text-slate-500"
+                />
+              )}
+            </div>
           </div>
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={onClose}>取消</Button>
-            <Button type="submit" disabled={isSaving} className="bg-red-600 hover:bg-red-700 text-white">
+            <Button type="submit" disabled={isSaving} className={primaryBtn}>
               {isSaving ? (
                 <span className="flex items-center gap-2">
                   <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />

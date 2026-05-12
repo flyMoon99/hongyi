@@ -16,15 +16,18 @@ import {
 } from '@/components/ui/alert-dialog'
 import { EmployeeForm } from '@/components/employees/employee-form'
 import { useAuth } from '@/contexts/auth-context'
-import { canManageEmployees, canManageEmployeeRecord } from '@/types'
+import { getPrimaryBtnClass } from '@/lib/theme'
+import { canManageEmployees, canManageEmployeeRecord, COMPANY_LABELS } from '@/types'
 import { formatDate, exportToCsv } from '@/lib/utils'
 import apiClient from '@/lib/api-client'
 import Link from 'next/link'
-import type { Employee, EmployeeFormValues, EmployeesListResponse } from '@/types'
+import type { Company, Employee, EmployeeFormValues, EmployeesListResponse } from '@/types'
 
 export default function EmployeesPage() {
   const { user } = useAuth()
   const canManage = canManageEmployees(user?.role)
+  const isAdmin = user?.role === 'ADMIN'
+  const primaryBtn = getPrimaryBtnClass(user?.role, user?.company)
 
   const [employees, setEmployees] = useState<Employee[]>([])
   const [total, setTotal] = useState(0)
@@ -32,6 +35,7 @@ export default function EmployeesPage() {
   const pageSize = 20
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
+  const [companyFilter, setCompanyFilter] = useState<Company | ''>('')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Employee | null>(null)
   const [deleting, setDeleting] = useState<Employee | null>(null)
@@ -43,7 +47,7 @@ export default function EmployeesPage() {
     setIsLoading(true)
     try {
       const data = await apiClient.get('/employees', {
-        params: { page, pageSize, search: search || undefined },
+        params: { page, pageSize, search: search || undefined, company: companyFilter || undefined },
       }) as EmployeesListResponse
       setEmployees(data.items)
       setTotal(data.total)
@@ -52,13 +56,20 @@ export default function EmployeesPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [page, pageSize, search])
+  }, [page, pageSize, search, companyFilter])
 
   useEffect(() => { fetchEmployees() }, [fetchEmployees])
 
   const handleSearch = () => {
     setPage(1)
     setSearch(searchInput)
+  }
+
+  const handleReset = () => {
+    setSearchInput('')
+    setSearch('')
+    setCompanyFilter('')
+    setPage(1)
   }
 
   const handleExport = async () => {
@@ -157,7 +168,7 @@ export default function EmployeesPage() {
               <Download size={15} />
               {isExporting ? '导出中...' : '导出'}
             </Button>
-            <Button onClick={handleAdd} className="bg-red-600 hover:bg-red-700 text-white">
+            <Button onClick={handleAdd} className={primaryBtn}>
               <Plus size={16} /> 新增员工
             </Button>
           </div>
@@ -166,18 +177,30 @@ export default function EmployeesPage() {
 
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex gap-2 max-w-sm">
-            <div className="relative flex-1">
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="relative">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <Input
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder="搜索姓名、手机号..."
-                className="pl-9"
+                className="pl-9 w-56"
               />
             </div>
+            {isAdmin && (
+              <select
+                value={companyFilter}
+                onChange={(e) => { setCompanyFilter(e.target.value as Company | ''); setPage(1) }}
+                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm"
+              >
+                <option value="">全部公司</option>
+                <option value="HAODING_HONGYI">皓鼎弘毅</option>
+                <option value="STATE_GRID">国家电网</option>
+              </select>
+            )}
             <Button variant="outline" size="sm" onClick={handleSearch} className="shrink-0">搜索</Button>
+            <Button variant="ghost" size="sm" onClick={handleReset} className="shrink-0 text-slate-500">重置</Button>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -189,6 +212,7 @@ export default function EmployeesPage() {
                   <TableHead>性别</TableHead>
                   <TableHead>手机号</TableHead>
                   <TableHead>邮箱</TableHead>
+                  <TableHead>所属公司</TableHead>
                   <TableHead>角色</TableHead>
                   <TableHead>创建时间</TableHead>
                   <TableHead className="text-right">操作</TableHead>
@@ -197,7 +221,7 @@ export default function EmployeesPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-slate-400 py-12">
+                    <TableCell colSpan={8} className="text-center text-slate-400 py-12">
                       <div className="flex items-center justify-center gap-2">
                         <div className="h-4 w-4 rounded-full border-2 border-red-500 border-t-transparent animate-spin" />
                         加载中...
@@ -206,7 +230,7 @@ export default function EmployeesPage() {
                   </TableRow>
                 ) : employees.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-slate-400 py-12">
+                    <TableCell colSpan={8} className="text-center text-slate-400 py-12">
                       暂无员工数据
                     </TableCell>
                   </TableRow>
@@ -232,6 +256,9 @@ export default function EmployeesPage() {
                       </TableCell>
                       <TableCell>
                         <span className="text-slate-500 text-sm">{emp.email || '-'}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-slate-600 text-sm">{emp.company ? COMPANY_LABELS[emp.company] : '-'}</span>
                       </TableCell>
                       <TableCell>{roleBadge(emp.role)}</TableCell>
                       <TableCell>
@@ -276,6 +303,7 @@ export default function EmployeesPage() {
         onClose={() => setFormOpen(false)}
         onSave={handleSave}
         employee={editing}
+        currentUser={user}
         currentUserRole={user?.role}
         isSaving={isSaving}
       />

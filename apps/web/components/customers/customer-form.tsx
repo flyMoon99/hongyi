@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useAuth } from '@/contexts/auth-context'
+import { getPrimaryBtnClass } from '@/lib/theme'
 import type { Customer } from '@/types'
 
 const schema = z.object({
@@ -30,6 +32,8 @@ interface Props {
 
 export function CustomerForm({ open, onClose, onSave, customer, isSaving }: Props) {
   const isEdit = !!customer
+  const { user } = useAuth()
+  const primaryBtn = getPrimaryBtnClass(user?.role, user?.company)
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   })
@@ -98,7 +102,7 @@ export function CustomerForm({ open, onClose, onSave, customer, isSaving }: Prop
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={onClose}>取消</Button>
-            <Button type="submit" disabled={isSaving} className="bg-red-600 hover:bg-red-700">
+            <Button type="submit" disabled={isSaving} className={primaryBtn}>
               {isSaving ? (
                 <span className="flex items-center gap-2">
                   <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />

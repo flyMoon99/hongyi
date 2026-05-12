@@ -24,6 +24,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         id: true,
         phone: true,
         role: true,
+        company: true,
         isDeleted: true,
         tokenVersion: true,
       },
@@ -37,6 +38,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('登录状态已失效，请重新登录')
     }
 
-    return { id: employee.id, phone: employee.phone, role: employee.role }
+    return { id: employee.id, phone: employee.phone, role: employee.role, company: employee.company }
   }
 }

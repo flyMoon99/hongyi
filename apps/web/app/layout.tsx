@@ -4,8 +4,8 @@ import { AuthProvider } from '@/contexts/auth-context'
 import { Toaster } from 'sonner'
 
 export const metadata: Metadata = {
-  title: '皓鼎弘毅管理后台',
-  description: '皓鼎弘毅电力服务管理系统',
+  title: '国家电网管理后台',
+  description: '国家电网综合业务管理系统',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

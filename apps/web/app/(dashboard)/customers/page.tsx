@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { CustomerForm } from '@/components/customers/customer-form'
 import { useAuth } from '@/contexts/auth-context'
+import { getPrimaryBtnClass } from '@/lib/theme'
 import { formatDate, exportToCsv } from '@/lib/utils'
 import apiClient from '@/lib/api-client'
 import type { Customer } from '@/types'
@@ -29,6 +30,7 @@ interface CustomersListResponse {
 export default function CustomersPage() {
   const { user } = useAuth()
   const canManage = user?.role === 'ADMIN' || user?.role === 'DEPT_MANAGER'
+  const primaryBtn = getPrimaryBtnClass(user?.role, user?.company)
 
   const [customers, setCustomers] = useState<Customer[]>([])
   const [total, setTotal] = useState(0)
@@ -168,7 +170,7 @@ export default function CustomersPage() {
             </Button>
             <Button
               onClick={() => { setEditing(null); setFormOpen(true) }}
-              className="bg-red-600 hover:bg-red-700"
+              className={primaryBtn}
             >
               <Plus size={16} /> 新增客户
             </Button>
@@ -209,7 +211,7 @@ export default function CustomersPage() {
                 className="pl-8 h-9"
               />
             </div>
-            <Button size="sm" onClick={handleSearch} className="bg-red-600 hover:bg-red-700 h-9">
+            <Button size="sm" onClick={handleSearch} className={`${primaryBtn} h-9`}>
               搜索
             </Button>
             <Button size="sm" variant="outline" onClick={handleReset} className="h-9">

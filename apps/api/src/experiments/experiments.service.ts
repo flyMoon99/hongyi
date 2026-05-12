@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { PrismaService } from '../prisma/prisma.service'
 import { CreateExperimentDto } from './dto/create-experiment.dto'
 import { UpdateExperimentDto } from './dto/update-experiment.dto'
-import { UserRole } from '@prisma/client'
+import { Company, UserRole } from '@prisma/client'
 
 const RESPONSIBLE_SELECT = { id: true, name: true }
 
@@ -10,8 +10,9 @@ const RESPONSIBLE_SELECT = { id: true, name: true }
 export class ExperimentsService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(page = 1, pageSize = 10, customerId?: string, search?: string) {
+  async findAll(page = 1, pageSize = 10, customerId?: string, search?: string, company?: Company) {
     const where: any = { isDeleted: false }
+    if (company) where.company = company
     if (customerId) where.customerId = customerId
     if (search) {
       where.OR = [
@@ -54,7 +55,7 @@ export class ExperimentsService {
     return item
   }
 
-  async create(dto: CreateExperimentDto, operatorId: string) {
+  async create(dto: CreateExperimentDto, operatorId: string, company?: Company) {
     const item = await this.prisma.experiment.create({
       data: {
         customerId: dto.customerId,
@@ -66,6 +67,7 @@ export class ExperimentsService {
         contactInfo: dto.contactInfo,
         lastTestDate: dto.lastTestDate ? new Date(dto.lastTestDate) : undefined,
         nextTestDate: dto.nextTestDate ? new Date(dto.nextTestDate) : undefined,
+        company: company ?? 'HAODING_HONGYI',
       },
       include: {
         customer: { select: { id: true, companyName: true } },

@@ -10,9 +10,10 @@ const prisma = new PrismaClient()
 describe('Employees API (e2e)', () => {
   let app: INestApplication
   let adminToken: string
-  let deptToken: string
-  let staffToken: string
-  // id of the employee we create during tests
+  let hdDeptToken: string
+  let hdStaffToken: string
+  let gridDeptToken: string
+  let gridStaffToken: string
   let createdId: string
 
   beforeAll(async () => {
@@ -33,10 +34,12 @@ describe('Employees API (e2e)', () => {
         .send({ phone, password })
         .then((r) => r.body.accessToken as string)
 
-    ;[adminToken, deptToken, staffToken] = await Promise.all([
+    ;[adminToken, hdDeptToken, hdStaffToken, gridDeptToken, gridStaffToken] = await Promise.all([
       login(SEEDS.admin.phone, SEEDS.admin.password),
-      login(SEEDS.dept.phone, SEEDS.dept.password),
-      login(SEEDS.staff.phone, SEEDS.staff.password),
+      login(SEEDS.hdDept.phone, SEEDS.hdDept.password),
+      login(SEEDS.hdStaff.phone, SEEDS.hdStaff.password),
+      login(SEEDS.gridDept.phone, SEEDS.gridDept.password),
+      login(SEEDS.gridStaff.phone, SEEDS.gridStaff.password),
     ])
   })
 
@@ -50,51 +53,129 @@ describe('Employees API (e2e)', () => {
     await request(app.getHttpServer()).get('/api/employees').expect(401)
   })
 
-  // ── 2. STAFF role forbidden ───────────────────────────────────────────
-  it('GET /employees → 403 for STAFF role', async () => {
+  // ── 2. HAODING STAFF → 403 ───────────────────────────────────────────
+  it('GET /employees → 403 for HAODING STAFF role', async () => {
     await request(app.getHttpServer())
       .get('/api/employees')
-      .set('Authorization', `Bearer ${staffToken}`)
+      .set('Authorization', `Bearer ${hdStaffToken}`)
       .expect(403)
   })
 
-  // ── 3. DEPT_MANAGER can read list ─────────────────────────────────────
-  it('GET /employees → 200 + items array for DEPT_MANAGER', async () => {
+  // ── 3. STATE_GRID STAFF → 403 ────────────────────────────────────────
+  it('GET /employees → 403 for STATE_GRID STAFF role', async () => {
+    await request(app.getHttpServer())
+      .get('/api/employees')
+      .set('Authorization', `Bearer ${gridStaffToken}`)
+      .expect(403)
+  })
+
+  // ── 4. HAODING DEPT_MANAGER 只看到皓鼎员工 ──────────────────────────
+  it('GET /employees → 200, HAODING DEPT_MANAGER sees only HAODING employees', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/employees')
-      .set('Authorization', `Bearer ${deptToken}`)
+      .set('Authorization', `Bearer ${hdDeptToken}`)
       .expect(200)
     expect(res.body).toHaveProperty('items')
     expect(Array.isArray(res.body.items)).toBe(true)
+    // All returned employees must belong to HAODING_HONGYI
+    for (const emp of res.body.items) {
+      expect(emp.company).toBe('HAODING_HONGYI')
+    }
+    // Should include the seed HAODING employees (at least hdDept and hdStaff)
+    const ids = res.body.items.map((e: any) => e.id)
+    expect(ids).toContain(SEEDS.hdDept.id)
+    expect(ids).toContain(SEEDS.hdStaff.id)
+    // Should NOT include STATE_GRID employees
+    expect(ids).not.toContain(SEEDS.gridDept.id)
+    expect(ids).not.toContain(SEEDS.gridStaff.id)
   })
 
-  // ── 4. ADMIN can read paginated list ──────────────────────────────────
-  it('GET /employees → 200 + total >= 3 for ADMIN', async () => {
+  // ── 5. STATE_GRID DEPT_MANAGER 只看到国网员工 ────────────────────────
+  it('GET /employees → 200, STATE_GRID DEPT_MANAGER sees only STATE_GRID employees', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/employees')
+      .set('Authorization', `Bearer ${gridDeptToken}`)
+      .expect(200)
+    expect(Array.isArray(res.body.items)).toBe(true)
+    // All returned employees must belong to STATE_GRID
+    for (const emp of res.body.items) {
+      expect(emp.company).toBe('STATE_GRID')
+    }
+    const ids = res.body.items.map((e: any) => e.id)
+    expect(ids).toContain(SEEDS.gridDept.id)
+    expect(ids).toContain(SEEDS.gridStaff.id)
+    expect(ids).not.toContain(SEEDS.hdDept.id)
+    expect(ids).not.toContain(SEEDS.hdStaff.id)
+  })
+
+  // ── 6. ADMIN 可以看到所有员工（>=5） ─────────────────────────────────
+  it('GET /employees → 200 + total >= 5 for ADMIN (all companies)', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/employees')
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200)
-    expect(res.body.total).toBeGreaterThanOrEqual(3)
+    expect(res.body.total).toBeGreaterThanOrEqual(5)
   })
 
-  // ── 5. DEPT_MANAGER can create employee ───────────────────────────────
-  it('POST /employees → 201 by DEPT_MANAGER, role defaults to STAFF', async () => {
+  // ── 7. ADMIN 按 company 过滤 → 只返回皓鼎员工 ───────────────────────
+  it('GET /employees?company=HAODING_HONGYI → returns only HAODING employees for ADMIN', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/employees?company=HAODING_HONGYI')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200)
+    for (const emp of res.body.items) {
+      expect(emp.company).toBe('HAODING_HONGYI')
+    }
+  })
+
+  // ── 8. ADMIN 按 company=STATE_GRID 过滤 ─────────────────────────────
+  it('GET /employees?company=STATE_GRID → returns only STATE_GRID employees for ADMIN', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/employees?company=STATE_GRID')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200)
+    expect(res.body.total).toBeGreaterThanOrEqual(2)
+    for (const emp of res.body.items) {
+      expect(emp.company).toBe('STATE_GRID')
+    }
+  })
+
+  // ── 9. HAODING DEPT_MANAGER 创建员工 → company 强制为 HAODING_HONGYI ─
+  it('POST /employees → 201 by HAODING DEPT_MANAGER, company forced to HAODING_HONGYI', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/employees')
-      .set('Authorization', `Bearer ${deptToken}`)
+      .set('Authorization', `Bearer ${hdDeptToken}`)
       .send({
-        name: '部门新增员工',
+        name: '皓鼎部门新增员工',
         gender: 'MALE',
         phone: '19900000010',
         password: 'Test@12345',
+        company: 'STATE_GRID',  // 尝试越权指定其他公司
       })
       .expect(201)
     expect(res.body.id).toBeDefined()
     expect(res.body.role).toBe('STAFF')
+    // company must be forced to HAODING_HONGYI regardless of input
+    expect(res.body.company).toBe('HAODING_HONGYI')
   })
 
-  // ── 6. ADMIN can create employee ──────────────────────────────────────
-  it('POST /employees → 201 by ADMIN, stores id for later tests', async () => {
+  // ── 10. STATE_GRID DEPT_MANAGER 创建员工 → company 强制为 STATE_GRID ─
+  it('POST /employees → 201 by STATE_GRID DEPT_MANAGER, company forced to STATE_GRID', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/api/employees')
+      .set('Authorization', `Bearer ${gridDeptToken}`)
+      .send({
+        name: '电网部门新增员工',
+        gender: 'FEMALE',
+        phone: '19900000012',
+        password: 'Test@12345',
+      })
+      .expect(201)
+    expect(res.body.company).toBe('STATE_GRID')
+  })
+
+  // ── 11. ADMIN 创建员工并存 ID ─────────────────────────────────────────
+  it('POST /employees → 201 by ADMIN with explicit company', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/employees')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -104,13 +185,15 @@ describe('Employees API (e2e)', () => {
         phone: '19900000011',
         password: 'Test@12345',
         role: 'STAFF',
+        company: 'HAODING_HONGYI',
       })
       .expect(201)
     expect(res.body.id).toBeDefined()
+    expect(res.body.company).toBe('HAODING_HONGYI')
     createdId = res.body.id
   })
 
-  // ── 7. Duplicate phone → 409 ──────────────────────────────────────────
+  // ── 12. 手机号重复 → 409 ─────────────────────────────────────────────
   it('POST /employees → 409 when phone already exists', async () => {
     await request(app.getHttpServer())
       .post('/api/employees')
@@ -124,26 +207,37 @@ describe('Employees API (e2e)', () => {
       .expect(409)
   })
 
-  // ── 8. DEPT_MANAGER can update STAFF employee name ────────────────────
-  it('PUT /employees/:id → 200 by DEPT_MANAGER, name updated', async () => {
+  // ── 13. HAODING DEPT_MANAGER 不能修改 company 字段 ───────────────────
+  it('PUT /employees/:id → company cannot be changed by DEPT_MANAGER', async () => {
     const res = await request(app.getHttpServer())
-      .put(`/api/employees/${createdId}`)
-      .set('Authorization', `Bearer ${deptToken}`)
-      .send({ name: '部门负责人已修改' })
+      .put(`/api/employees/${SEEDS.hdStaff.id}`)
+      .set('Authorization', `Bearer ${hdDeptToken}`)
+      .send({ name: '皓鼎员工更名', company: 'STATE_GRID' })
       .expect(200)
-    expect(res.body.name).toBe('部门负责人已修改')
+    // company change should be silently ignored
+    expect(res.body.company).toBe('HAODING_HONGYI')
+    expect(res.body.name).toBe('皓鼎员工更名')
   })
 
-  // ── 8b. DEPT_MANAGER cannot assign DEPT_MANAGER role → 403 ────────────
+  // ── 14. HAODING DEPT_MANAGER 无法操作国网员工 → 403 ─────────────────
+  it('PUT /employees/:id → 403 when HAODING DEPT_MANAGER tries to edit STATE_GRID employee', async () => {
+    await request(app.getHttpServer())
+      .put(`/api/employees/${SEEDS.gridStaff.id}`)
+      .set('Authorization', `Bearer ${hdDeptToken}`)
+      .send({ name: '越权修改' })
+      .expect(403)
+  })
+
+  // ── 15. DEPT_MANAGER 无法授予 DEPT_MANAGER 角色 → 403 ───────────────
   it('PUT /employees/:id → 403 when DEPT_MANAGER tries to assign DEPT_MANAGER role', async () => {
     await request(app.getHttpServer())
       .put(`/api/employees/${createdId}`)
-      .set('Authorization', `Bearer ${deptToken}`)
+      .set('Authorization', `Bearer ${hdDeptToken}`)
       .send({ role: 'DEPT_MANAGER' })
       .expect(403)
   })
 
-  // ── 9. ADMIN soft-delete ──────────────────────────────────────────────
+  // ── 16. ADMIN 软删除 ──────────────────────────────────────────────────
   it('DELETE /employees/:id → 200 soft-delete by ADMIN', async () => {
     await request(app.getHttpServer())
       .delete(`/api/employees/${createdId}`)
@@ -151,8 +245,8 @@ describe('Employees API (e2e)', () => {
       .expect(200)
   })
 
-  // ── 10. Soft-deleted employee not in list ─────────────────────────────
-  it('GET /employees → 200, soft-deleted employee not in items', async () => {
+  // ── 17. 软删除后不出现在列表中 ──────────────────────────────────────
+  it('GET /employees → soft-deleted employee not in items', async () => {
     const res = await request(app.getHttpServer())
       .get('/api/employees')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -161,16 +255,12 @@ describe('Employees API (e2e)', () => {
     expect(ids).not.toContain(createdId)
   })
 
-  // ── 11. GET detail includes employeeLogs array ────────────────────────
-  it('GET /employees/:id → 200 + employeeLogs array with at least 1 entry', async () => {
+  // ── 18. GET 详情包含 employeeLogs 数组 ──────────────────────────────
+  it('GET /employees/:id → 200 + employeeLogs array shape', async () => {
     const res = await request(app.getHttpServer())
       .get(`/api/employees/${SEEDS.admin.id}`)
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200)
     expect(Array.isArray(res.body.employeeLogs)).toBe(true)
-    // At least the "新增员工" log written when seed created via API is absent here
-    // but department head created an employee above → admin has no log yet; we only
-    // check the shape is correct (array exists)
-    expect(res.body.employeeLogs).toBeDefined()
   })
 })
