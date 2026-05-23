@@ -21,11 +21,19 @@ export class UpdateFireInspectionDto {
 
   @IsOptional()
   @IsString()
-  lastInspectionDate?: string
+  gasLastInspectionDate?: string
 
   @IsOptional()
   @IsString()
-  nextInspectionDate?: string
+  gasNextInspectionDate?: string
+
+  @IsOptional()
+  @IsString()
+  extLastInspectionDate?: string
+
+  @IsOptional()
+  @IsString()
+  extNextInspectionDate?: string
 
   @IsOptional()
   @IsString()

@@ -60,8 +60,10 @@ export class FireInspectionsService {
         contactPerson: dto.contactPerson,
         contactInfo: dto.contactInfo,
         remark: dto.remark,
-        lastInspectionDate: dto.lastInspectionDate ? new Date(dto.lastInspectionDate) : undefined,
-        nextInspectionDate: dto.nextInspectionDate ? new Date(dto.nextInspectionDate) : undefined,
+        gasLastInspectionDate: dto.gasLastInspectionDate ? new Date(dto.gasLastInspectionDate) : undefined,
+        gasNextInspectionDate: dto.gasNextInspectionDate ? new Date(dto.gasNextInspectionDate) : undefined,
+        extLastInspectionDate: dto.extLastInspectionDate ? new Date(dto.extLastInspectionDate) : undefined,
+        extNextInspectionDate: dto.extNextInspectionDate ? new Date(dto.extNextInspectionDate) : undefined,
         company: company ?? 'STATE_GRID',
       },
       include: { stationRoom: { select: STATION_SELECT } },
@@ -80,11 +82,17 @@ export class FireInspectionsService {
   async update(id: string, dto: UpdateFireInspectionDto, operatorId: string) {
     await this.findOne(id)
     const data: any = { ...dto }
-    if (dto.lastInspectionDate !== undefined) {
-      data.lastInspectionDate = dto.lastInspectionDate ? new Date(dto.lastInspectionDate) : null
+    if (dto.gasLastInspectionDate !== undefined) {
+      data.gasLastInspectionDate = dto.gasLastInspectionDate ? new Date(dto.gasLastInspectionDate) : null
     }
-    if (dto.nextInspectionDate !== undefined) {
-      data.nextInspectionDate = dto.nextInspectionDate ? new Date(dto.nextInspectionDate) : null
+    if (dto.gasNextInspectionDate !== undefined) {
+      data.gasNextInspectionDate = dto.gasNextInspectionDate ? new Date(dto.gasNextInspectionDate) : null
+    }
+    if (dto.extLastInspectionDate !== undefined) {
+      data.extLastInspectionDate = dto.extLastInspectionDate ? new Date(dto.extLastInspectionDate) : null
+    }
+    if (dto.extNextInspectionDate !== undefined) {
+      data.extNextInspectionDate = dto.extNextInspectionDate ? new Date(dto.extNextInspectionDate) : null
     }
     const item = await this.prisma.fireInspection.update({
       where: { id },

@@ -58,8 +58,11 @@ export function AlertBubble() {
           apiClient.get<{ items: FireInspection[] }>('/fire-inspections?pageSize=200')
             .then((res) => {
               const urgentFire = (res.items ?? []).filter((f) => {
-                const days = getDaysUntil(f.nextInspectionDate)
-                return days !== null && days >= 0 && days <= URGENT_DAYS
+                const dates = [f.gasNextInspectionDate, f.extNextInspectionDate]
+                return dates.some((d) => {
+                  const days = getDaysUntil(d)
+                  return days !== null && days >= 0 && days <= URGENT_DAYS
+                })
               })
               setFireCount(urgentFire.length)
             }).catch(() => {})

@@ -301,8 +301,10 @@ export interface FireInspection {
   frequency: FireInspectionFrequency
   responsiblePerson: string
   equipment: FireEquipment[]
-  lastInspectionDate?: string | null
-  nextInspectionDate?: string | null
+  gasLastInspectionDate?: string | null
+  gasNextInspectionDate?: string | null
+  extLastInspectionDate?: string | null
+  extNextInspectionDate?: string | null
   remark?: string | null
   contactPerson: string
   contactInfo: string

@@ -231,21 +231,23 @@ model StationRoomLog {
 }
 
 model FireInspection {
-  id                  String                  @id @default(cuid())
-  stationRoomId       String
-  frequency           FireInspectionFrequency @default(ANNUALLY)
-  responsiblePerson   String
-  equipment           FireEquipment[]
-  lastInspectionDate  DateTime?
-  nextInspectionDate  DateTime?
-  remark              String?
-  contactPerson       String
-  contactInfo         String
-  company             Company                 @default(STATE_GRID)
-  isDeleted           Boolean                 @default(false)
-  deletedAt           DateTime?
-  createdAt           DateTime                @default(now())
-  updatedAt           DateTime                @updatedAt
+  id                    String                  @id @default(cuid())
+  stationRoomId         String
+  frequency             FireInspectionFrequency @default(ANNUALLY)
+  responsiblePerson     String
+  equipment             FireEquipment[]
+  gasLastInspectionDate DateTime?
+  gasNextInspectionDate DateTime?
+  extLastInspectionDate DateTime?
+  extNextInspectionDate DateTime?
+  remark                String?
+  contactPerson         String
+  contactInfo           String
+  company               Company                 @default(STATE_GRID)
+  isDeleted             Boolean                 @default(false)
+  deletedAt             DateTime?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
 
   stationRoom StationRoom         @relation(fields: [stationRoomId], references: [id], onDelete: Cascade)
   logs        FireInspectionLog[]
