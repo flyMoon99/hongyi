@@ -22,6 +22,20 @@ function getUrgencyLevel(days: number | null) {
   return { label: `${days}天后`, variant: 'secondary' as const }
 }
 
+/** 取消防巡检中最近的一次下次巡检日期（气灭/灭火器取最早） */
+function getNearestFireNextDate(item: FireInspection): string | null {
+  const dates = [item.gasNextInspectionDate, item.extNextInspectionDate].filter(Boolean) as string[]
+  if (dates.length === 0) return null
+  return dates.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0]
+}
+
+function formatFireNextDates(item: FireInspection): string {
+  const parts: string[] = []
+  if (item.gasNextInspectionDate) parts.push(`气灭：${formatDate(item.gasNextInspectionDate)}`)
+  if (item.extNextInspectionDate) parts.push(`灭火器：${formatDate(item.extNextInspectionDate)}`)
+  return parts.join(' · ') || '-'
+}
+
 function HaodingDashboard() {
   const { user } = useAuth()
   const [stats, setStats] = useState<HaodingStats>({ customers: 0, employees: 0, inspections: 0, experiments: 0 })
@@ -179,7 +193,12 @@ function StateGridDashboard() {
       const val = <T,>(r: PromiseSettledResult<T>): T | undefined => r.status === 'fulfilled' ? r.value : undefined
       const fiData = val(fiRes)
       setStats({ stationRooms: val(srRes)?.total ?? 0, fireInspections: fiData?.total ?? 0, employees: val(empRes)?.total ?? 0 })
-      setUpcomingFire((fiData?.items ?? []).filter(i => i.nextInspectionDate).sort((a, b) => new Date(a.nextInspectionDate!).getTime() - new Date(b.nextInspectionDate!).getTime()).slice(0, 5))
+      setUpcomingFire(
+        (fiData?.items ?? [])
+          .filter(i => getNearestFireNextDate(i))
+          .sort((a, b) => new Date(getNearestFireNextDate(a)!).getTime() - new Date(getNearestFireNextDate(b)!).getTime())
+          .slice(0, 5),
+      )
       setLoading(false)
     }
     fetchAll()
@@ -237,13 +256,14 @@ function StateGridDashboard() {
           {loading ? <div className="space-y-2">{[1,2,3].map(n => <div key={n} className="h-14 bg-slate-50 rounded-lg animate-pulse" />)}</div>
           : upcomingFire.length === 0 ? <p className="text-sm text-slate-400 py-4 text-center">暂无消防巡检计划</p>
           : <div className="space-y-2">{upcomingFire.map((item) => {
-            const days = getDaysUntil(item.nextInspectionDate)
+            const nextDate = getNearestFireNextDate(item)
+            const days = getDaysUntil(nextDate)
             const urgency = getUrgencyLevel(days)
             return (
               <div key={item.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-slate-50">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-700 truncate">{item.stationRoom?.name ?? '-'} · {item.responsiblePerson}</p>
-                  <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5"><Calendar size={11} />{formatDate(item.nextInspectionDate)}</p>
+                  <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5"><Calendar size={11} />{formatFireNextDates(item)}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {urgency && days !== null && days <= 30 && <Badge variant={urgency.variant} className="text-xs">{urgency.label}</Badge>}
