@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Search, Pencil, Trash2, Eye, ChevronsUpDown, Check } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, Eye, ChevronsUpDown, Check, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -205,6 +205,49 @@ export default function FireInspectionsPage() {
 
   const totalPages = Math.ceil(total / pageSize)
 
+  const handleExport = async () => {
+    try {
+      toast.info('正在导出，请稍候...')
+      const data = await apiClient.get<ListResponse>('/fire-inspections', {
+        params: { page: 1, pageSize: 9999, search: search || undefined, stationRoomId: stationFilter || undefined },
+      })
+      const rows = data.items
+      const headers = [
+        '站室', '巡检频率', '负责人', '消防设备',
+        '气灭上次巡检日期', '气灭下次巡检日期',
+        '灭火器上次巡检日期', '灭火器下次巡检日期',
+        '巡检联系人', '联系方式', '备注',
+      ]
+      const csvRows = [
+        headers.join(','),
+        ...rows.map(r => [
+          `"${r.stationRoom?.name ?? ''}"`,
+          `"${FIRE_INSPECTION_FREQUENCY_LABELS[r.frequency]}"`,
+          `"${r.responsiblePerson}"`,
+          `"${r.equipment.map(e => FIRE_EQUIPMENT_LABELS[e]).join('、')}"`,
+          `"${formatDate(r.gasLastInspectionDate) || ''}"`,
+          `"${formatDate(r.gasNextInspectionDate) || ''}"`,
+          `"${formatDate(r.extLastInspectionDate) || ''}"`,
+          `"${formatDate(r.extNextInspectionDate) || ''}"`,
+          `"${r.contactPerson}"`,
+          `"${r.contactInfo}"`,
+          `"${(r.remark ?? '').replace(/"/g, '""')}"`,
+        ].join(',')),
+      ]
+      const bom = '\uFEFF'
+      const blob = new Blob([bom + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `消防巡检_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success(`已导出 ${rows.length} 条消防巡检数据`)
+    } catch {
+      toast.error('导出失败，请重试')
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -212,11 +255,18 @@ export default function FireInspectionsPage() {
           <h1 className="text-xl font-bold text-slate-800">消防巡检</h1>
           <p className="text-sm text-slate-500 mt-0.5">共 {total} 条记录</p>
         </div>
-        {canManage && (
-          <Button onClick={openAdd} className={primaryBtn}>
-            <Plus size={16} /> 新增巡检
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {canManage && (
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download size={15} className="mr-1" /> 导出
+            </Button>
+          )}
+          {canManage && (
+            <Button onClick={openAdd} className={primaryBtn}>
+              <Plus size={16} /> 新增巡检
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
