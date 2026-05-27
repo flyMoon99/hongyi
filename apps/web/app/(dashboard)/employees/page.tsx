@@ -196,7 +196,7 @@ export default function EmployeesPage() {
               >
                 <option value="">全部公司</option>
                 <option value="HAODING_HONGYI">皓鼎弘毅</option>
-                <option value="STATE_GRID">国家电网</option>
+                <option value="STATE_GRID">电网</option>
               </select>
             )}
             <Button variant="outline" size="sm" onClick={handleSearch} className="shrink-0">搜索</Button>

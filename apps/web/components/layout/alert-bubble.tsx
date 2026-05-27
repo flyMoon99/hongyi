@@ -52,7 +52,7 @@ export function AlertBubble() {
         )
       }
 
-      // 消防巡检：国家电网 员工及 ADMIN 均可见
+      // 消防巡检：电网 员工及 ADMIN 均可见
       if (isStateGrid) {
         fetches.push(
           apiClient.get<{ items: FireInspection[] }>('/fire-inspections?pageSize=200')

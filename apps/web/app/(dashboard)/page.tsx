@@ -215,7 +215,7 @@ function StateGridDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">你好，{user?.name}</h1>
-        <p className="text-slate-500 text-sm mt-1">欢迎使用国家电网综合管理系统</p>
+        <p className="text-slate-500 text-sm mt-1">欢迎使用综合业务管理系统</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {statCards.map((stat) => {

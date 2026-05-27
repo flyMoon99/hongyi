@@ -146,7 +146,7 @@ export function EmployeeForm({ open, onClose, onSave, employee, currentUser, cur
                   <SelectTrigger><SelectValue placeholder="请选择公司" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="HAODING_HONGYI">皓鼎弘毅</SelectItem>
-                    <SelectItem value="STATE_GRID">国家电网</SelectItem>
+                    <SelectItem value="STATE_GRID">电网</SelectItem>
                   </SelectContent>
                 </Select>
               ) : (

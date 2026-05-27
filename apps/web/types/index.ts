@@ -232,7 +232,7 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 
 export const COMPANY_LABELS: Record<Company, string> = {
   HAODING_HONGYI: '皓鼎弘毅',
-  STATE_GRID: '国家电网',
+  STATE_GRID: '电网',
 }
 
 export const FIRE_INSPECTION_FREQUENCY_LABELS: Record<FireInspectionFrequency, string> = {

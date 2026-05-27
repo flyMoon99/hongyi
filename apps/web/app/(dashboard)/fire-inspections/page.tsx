@@ -530,7 +530,7 @@ export default function FireInspectionsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {employees.length === 0 ? (
-                      <SelectItem value="__empty__" disabled>暂无国家电网员工</SelectItem>
+                      <SelectItem value="__empty__" disabled>暂无电网员工</SelectItem>
                     ) : employees.map(emp => (
                       <SelectItem key={emp.id} value={emp.name}>
                         {emp.name}（{ROLE_LABELS[emp.role]}）
