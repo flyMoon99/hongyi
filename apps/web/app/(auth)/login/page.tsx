@@ -4,11 +4,10 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { AlertCircle, Eye, EyeOff, Lock, Smartphone, Zap } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, Lock, Smartphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { StateGridLogo } from '@/components/brand/state-grid-logo'
 import { useAuth } from '@/contexts/auth-context'
 import apiClient from '@/lib/api-client'
 import type { CurrentUser } from '@/types'
@@ -19,49 +18,9 @@ const loginSchema = z.object({
 })
 type LoginForm = z.infer<typeof loginSchema>
 
-
-/** 左侧装饰性波浪 SVG */
-function WaveDecoration() {
-  return (
-    <svg
-      className="absolute bottom-0 left-0 right-0 w-full"
-      viewBox="0 0 800 180"
-      preserveAspectRatio="none"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ height: 160 }}
-    >
-      <path
-        d="M0,60 C100,120 200,0 300,80 C400,160 500,20 600,90 C700,160 750,60 800,80 L800,180 L0,180 Z"
-        fill="rgba(255,255,255,0.06)"
-      />
-      <path
-        d="M0,100 C150,40 250,140 400,100 C550,60 650,140 800,100 L800,180 L0,180 Z"
-        fill="rgba(255,255,255,0.04)"
-      />
-    </svg>
-  )
-}
-
-/** 左侧浮动数据卡片 */
-function StatCard({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
-  return (
-    <div
-      className="flex items-center gap-3 px-4 py-3 rounded-xl"
-      style={{ background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.18)' }}
-    >
-      <div
-        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-        style={{ background: 'rgba(255,255,255,0.2)' }}
-      >
-        {icon}
-      </div>
-      <div>
-        <div className="text-white font-bold text-lg leading-tight">{value}</div>
-        <div className="text-white/60 text-xs leading-tight mt-0.5">{label}</div>
-      </div>
-    </div>
-  )
-}
+const TEAL = '#008C6A'
+const TEAL_DARK = '#006B50'
+const TEAL_LIGHT = '#00A87E'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -103,134 +62,53 @@ export default function LoginPage() {
     await doLogin(data.phone.trim(), data.password.trim())
   }
 
-  // 国家电网青绿主色（与95598.cn导航栏同色系）
-  const TEAL = '#008C6A'
-  const TEAL_DARK = '#006B50'
-  const TEAL_LIGHT = '#00A87E'
-
   return (
-    <div className="min-h-screen flex" style={{ background: '#F4F9F7' }}>
+    <div className="min-h-screen bg-white flex flex-col">
 
-      {/* ══════════════════════════════════════
-          左侧视觉区  55%
-      ══════════════════════════════════════ */}
-      <div
-        className="hidden lg:flex lg:flex-col relative overflow-hidden"
-        style={{
-          width: '55%',
-          background: `linear-gradient(145deg, ${TEAL_DARK} 0%, ${TEAL} 45%, ${TEAL_LIGHT} 100%)`,
-        }}
-      >
-        {/* 网格纹理 */}
-        <svg className="absolute inset-0 w-full h-full opacity-[0.06]" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <pattern id="g" width="48" height="48" patternUnits="userSpaceOnUse">
-              <path d="M48 0 L0 0 0 48" fill="none" stroke="white" strokeWidth="0.6" />
-            </pattern>
-          </defs>
-          <rect width="100%" height="100%" fill="url(#g)" />
-        </svg>
+      {/* 极细顶部色条 */}
+      <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${TEAL_DARK}, ${TEAL_LIGHT})` }} />
 
-        {/* 大圆装饰 */}
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            right: -120, top: -80,
-            width: 420, height: 420,
-            borderRadius: '50%',
-            background: 'rgba(255,255,255,0.07)',
-          }}
-        />
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            left: -60, bottom: -60,
-            width: 320, height: 320,
-            borderRadius: '50%',
-            background: 'rgba(255,255,255,0.05)',
-          }}
-        />
+      {/* 主体居中 */}
+      <div className="flex-1 flex flex-col items-center justify-center px-4">
 
-        <WaveDecoration />
-
-        {/* 内容 */}
-        <div className="relative z-10 flex flex-col h-full px-12 py-10">
-          {/* Logo */}
-          <StateGridLogo dark={false} />
-
-          {/* 主标语 */}
-          <div className="flex-1 flex flex-col justify-center max-w-sm">
-            <div
-              className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-6 self-start"
-              style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)' }}
-            >
-              <Zap size={12} className="text-white" />
-              <span className="text-white/90 text-xs tracking-widest">综合业务管理系统</span>
-            </div>
-
-            <h1 className="text-white font-bold leading-tight mb-4" style={{ fontSize: 36 }}>
-              安全·绿色·高效<br />
-              <span style={{ fontSize: 26, fontWeight: 400, opacity: 0.8 }}>智慧电网管理平台</span>
-            </h1>
-
-            <p className="text-white/60 text-sm leading-relaxed mb-10">
-              覆盖站室管理、消防巡检、员工档案等<br />核心业务模块，让管理更简单高效。
-            </p>
-
-          </div>
-
-          {/* 底部 */}
-          <p className="text-white/25 text-xs tracking-wider relative z-10">
-            © 2026 国家电网有限公司  保留所有权利
-          </p>
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════
-          右侧登录区  45%
-      ══════════════════════════════════════ */}
-      <div className="flex-1 flex flex-col items-center justify-center px-8 py-12 bg-white">
-
-        {/* 移动端顶部 Logo */}
-        <div className="lg:hidden mb-10">
-          <StateGridLogo dark={true} />
+        {/* 系统标识 */}
+        <div className="flex flex-col items-center mb-10">
+          <h1 className="text-2xl font-bold tracking-wide" style={{ color: '#1A2E28' }}>综合业务管理系统</h1>
+          <p className="text-xs tracking-widest mt-2" style={{ color: '#9BB5AF' }}>INTEGRATED BUSINESS MANAGEMENT SYSTEM</p>
         </div>
 
-        <div className="w-full" style={{ maxWidth: 380 }}>
-          {/* 标题 */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-1" style={{ color: '#1A2E28' }}>欢迎登录</h2>
-            <p className="text-sm" style={{ color: '#7A9590' }}>请输入您的账号信息以继续访问</p>
-            <div className="mt-3 h-[3px] w-8 rounded-full" style={{ background: TEAL }} />
+        {/* 登录卡片 */}
+        <div
+          className="w-full bg-white"
+          style={{
+            maxWidth: 400,
+            borderRadius: 16,
+            border: '1px solid #EAEFED',
+            boxShadow: '0 4px 40px rgba(0,0,0,0.07)',
+            padding: '36px 36px 32px',
+          }}
+        >
+          <div className="mb-6">
+            <h2 className="text-lg font-semibold text-slate-800">账号登录</h2>
+            <div className="mt-2 h-[3px] w-6 rounded-full" style={{ background: TEAL }} />
           </div>
 
-          {/* 表单 */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" autoComplete="new-password">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="new-password">
+
             {/* 手机号 */}
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium" style={{ color: '#3D5A54' }}>手机号</Label>
+              <Label className="text-sm font-medium text-slate-600">手机号</Label>
               <div className="relative">
-                <Smartphone
-                  size={15}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                  style={{ color: TEAL }}
-                />
+                <Smartphone size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: TEAL }} />
                 <Input
                   {...register('phone', { onChange: () => setLoginError(null) })}
                   type="text"
                   inputMode="numeric"
                   autoComplete="new-password"
                   placeholder="请输入手机号"
-                  className="pl-10 h-12 placeholder:text-slate-300 transition-all"
-                  style={{
-                    border: `1.5px solid #E2EDE9`,
-                    borderRadius: 10,
-                    background: '#FAFCFB',
-                    color: '#1A2E28',
-                    fontSize: 14,
-                  }}
-                  onFocus={e => (e.currentTarget.style.borderColor = TEAL)}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#E2EDE9')}
+                  className="pl-10 h-11 text-sm placeholder:text-slate-300 bg-slate-50 border-slate-200 rounded-lg focus-visible:ring-0 transition-all"
+                  onFocus={e => { e.currentTarget.style.borderColor = TEAL; e.currentTarget.style.boxShadow = `0 0 0 3px rgba(0,140,106,0.1)` }}
+                  onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = '' }}
                 />
               </div>
               {errors.phone && <p className="text-red-500 text-xs">{errors.phone.message}</p>}
@@ -238,35 +116,23 @@ export default function LoginPage() {
 
             {/* 密码 */}
             <div className="space-y-1.5">
-              <Label className="text-sm font-medium" style={{ color: '#3D5A54' }}>密码</Label>
+              <Label className="text-sm font-medium text-slate-600">密码</Label>
               <div className="relative">
-                <Lock
-                  size={15}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"
-                  style={{ color: TEAL }}
-                />
+                <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: TEAL }} />
                 <Input
                   {...register('password', { onChange: () => setLoginError(null) })}
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   placeholder="请输入密码"
-                  className="pl-10 pr-11 h-12 placeholder:text-slate-300 transition-all"
-                  style={{
-                    border: `1.5px solid #E2EDE9`,
-                    borderRadius: 10,
-                    background: '#FAFCFB',
-                    color: '#1A2E28',
-                    fontSize: 14,
-                  }}
-                  onFocus={e => (e.currentTarget.style.borderColor = TEAL)}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#E2EDE9')}
+                  className="pl-10 pr-11 h-11 text-sm placeholder:text-slate-300 bg-slate-50 border-slate-200 rounded-lg focus-visible:ring-0 transition-all"
+                  onFocus={e => { e.currentTarget.style.borderColor = TEAL; e.currentTarget.style.boxShadow = `0 0 0 3px rgba(0,140,106,0.1)` }}
+                  onBlur={e => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.boxShadow = '' }}
                 />
                 <button
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
-                  style={{ color: '#9BB5AF' }}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
@@ -276,11 +142,8 @@ export default function LoginPage() {
 
             {/* 错误提示 */}
             {loginError && (
-              <div
-                className="flex items-start gap-2 rounded-xl px-4 py-3"
-                style={{ background: '#FFF5F5', border: '1px solid #FED7D7' }}
-              >
-                <AlertCircle size={15} className="mt-0.5 shrink-0 text-red-500" />
+              <div className="flex items-start gap-2 rounded-lg px-4 py-3 bg-red-50 border border-red-100">
+                <AlertCircle size={14} className="mt-0.5 shrink-0 text-red-500" />
                 <p className="text-sm text-red-600">{loginError}</p>
               </div>
             )}
@@ -289,14 +152,13 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-12 text-white font-semibold tracking-[0.15em] border-0 transition-all active:scale-[0.98] mt-1"
+              className="w-full h-11 text-white font-semibold tracking-[0.1em] border-0 transition-all active:scale-[0.98] mt-1 rounded-lg"
               style={{
                 background: isLoading
                   ? '#7BB5A8'
-                  : `linear-gradient(135deg, ${TEAL_DARK} 0%, ${TEAL} 50%, ${TEAL_LIGHT} 100%)`,
-                borderRadius: 10,
+                  : `linear-gradient(135deg, ${TEAL_DARK} 0%, ${TEAL} 55%, ${TEAL_LIGHT} 100%)`,
+                boxShadow: isLoading ? 'none' : `0 4px 16px rgba(0,140,106,0.3)`,
                 fontSize: 15,
-                boxShadow: isLoading ? 'none' : `0 6px 20px rgba(0,140,106,0.35)`,
               }}
             >
               {isLoading ? (
@@ -307,27 +169,13 @@ export default function LoginPage() {
               ) : '登　　录'}
             </Button>
           </form>
-
-          {/* 测试账号 */}
-          <div
-            className="mt-6 rounded-xl px-4 py-3.5"
-            style={{ background: '#F0FAF6', border: `1px solid #C8EAE0` }}
-          >
-            <p
-              className="text-[11px] font-semibold tracking-widest uppercase mb-2"
-              style={{ color: TEAL }}
-            >
-              测试账号
-            </p>
-            <p className="text-[12px]" style={{ color: '#4A7A6E' }}>
-              手机号：<span className="font-mono select-all" style={{ color: '#1A2E28' }}>13800138001</span>
-            </p>
-            <p className="text-[12px] mt-0.5" style={{ color: '#4A7A6E' }}>
-              密　码：<span className="font-mono select-all" style={{ color: '#1A2E28' }}>Admin@123456</span>
-            </p>
-          </div>
         </div>
       </div>
+
+      {/* 底部版权 */}
+      <p className="text-center text-xs text-slate-300 py-6">
+        © 2026 北京皓鼎弘毅电力科技有限公司&nbsp;&nbsp;保留所有权
+      </p>
     </div>
   )
 }

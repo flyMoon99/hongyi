@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { StateGridLogo } from '@/components/brand/state-grid-logo'
 import {
   LayoutDashboard,
   Users,
@@ -40,9 +39,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
 function getNavItems(user: CurrentUser | null): NavItem[] {
   if (!user) return []
   return ALL_NAV_ITEMS.filter((item) => {
-    if (item.module === 'dashboard') {
-      return user.role !== 'ADMIN'
-    }
+    if (item.module === 'dashboard') return user.role !== 'ADMIN'
     return canReadModule(user, item.module)
   })
 }
@@ -50,6 +47,9 @@ function getNavItems(user: CurrentUser | null): NavItem[] {
 function isStateGridTheme(user: CurrentUser | null): boolean {
   return user?.role === 'ADMIN' || user?.company === 'STATE_GRID'
 }
+
+const TEAL = '#008C6A'
+const TEAL_BG = '#F0FAF6'
 
 interface SidebarProps {
   open?: boolean
@@ -71,13 +71,24 @@ function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {
   if (stateGrid) {
     return (
       <>
-        {/* Logo — 国家电网 */}
-        <div className="px-5 py-5 border-b border-white/15 shrink-0">
-          <StateGridLogo dark={false} size={40} />
-          <p className="text-white/50 text-[10px] tracking-widest mt-2 ml-1">管理后台</p>
+        {/* 标题区 */}
+        <div className="px-5 py-5 shrink-0" style={{ borderBottom: '1px solid #E8F5EF' }}>
+          <div className="flex items-center gap-2.5">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+              style={{ background: `linear-gradient(135deg, #006B50, #00A87E)` }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M13 2L4.5 13.5H11L10 22L20.5 9.5H14L13 2Z" fill="white" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-bold leading-tight" style={{ color: '#1A2E28' }}>综合业务管理后台</p>
+            </div>
+          </div>
         </div>
 
-        {/* Navigation */}
+        {/* 导航 */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon
@@ -90,39 +101,34 @@ function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 group relative',
                   active
-                    ? 'bg-white/20 text-white'
-                    : 'text-white/60 hover:bg-white/10 hover:text-white',
+                    ? 'text-white'
+                    : 'text-slate-500 hover:text-slate-800',
                 )}
+                style={active ? {
+                  background: `linear-gradient(135deg, #006B50, ${TEAL})`,
+                  boxShadow: '0 2px 10px rgba(0,140,106,0.25)',
+                } : {}}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = TEAL_BG }}
+                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = '' }}
               >
-                {active && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-white" />
-                )}
                 <Icon
-                  className={cn(
-                    'shrink-0',
-                    active ? 'text-white' : 'text-white/50 group-hover:text-white/80',
-                  )}
-                  size={18}
+                  className="shrink-0"
+                  size={17}
+                  style={{ color: active ? 'white' : '#6B8E85' }}
                 />
                 <span className="flex-1">{item.label}</span>
-                {active && <ChevronRight size={14} className="opacity-50" />}
+                {active && <ChevronRight size={13} className="opacity-60" />}
               </Link>
             )
           })}
         </nav>
-
-        {/* Footer */}
-        <div className="px-4 py-4 border-t border-white/15 shrink-0">
-          <p className="text-xs text-white/30 text-center tracking-wider">国家电网有限公司</p>
-        </div>
       </>
     )
   }
 
-  // 皓鼎弘毅 theme (original)
+  // 皓鼎弘毅 theme（深色）
   return (
     <>
-      {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10 shrink-0">
         <Image src="/logo.png" alt="皓鼎弘毅" width={36} height={36} className="shrink-0" style={{ width: 36, height: 'auto' }} />
         <div>
@@ -131,7 +137,6 @@ function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon
@@ -149,10 +154,7 @@ function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {
               )}
             >
               <Icon
-                className={cn(
-                  'shrink-0',
-                  active ? 'text-white' : 'text-slate-500 group-hover:text-slate-300',
-                )}
+                className={cn('shrink-0', active ? 'text-white' : 'text-slate-500 group-hover:text-slate-300')}
                 size={18}
               />
               <span className="flex-1">{item.label}</span>
@@ -162,7 +164,6 @@ function NavContent({ onLinkClick }: { onLinkClick?: () => void }) {
         })}
       </nav>
 
-      {/* Footer */}
       <div className="px-4 py-4 border-t border-white/10 shrink-0">
         <p className="text-xs text-slate-600 text-center">皓鼎弘毅电力服务</p>
       </div>
@@ -174,19 +175,17 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const { user } = useAuth()
   const stateGrid = isStateGridTheme(user)
 
-  const desktopBg = stateGrid
-    ? 'linear-gradient(180deg, #006B50 0%, #008C6A 60%, #00A87E 100%)'
-    : undefined
   const desktopClass = stateGrid
-    ? 'hidden lg:flex h-screen w-60 flex-col text-white fixed left-0 top-0 z-40'
+    ? 'hidden lg:flex h-screen w-60 flex-col bg-white fixed left-0 top-0 z-40'
     : 'hidden lg:flex h-screen w-60 flex-col bg-[#0f172a] text-slate-300 fixed left-0 top-0 z-40'
 
-  const drawerBg = stateGrid
-    ? 'linear-gradient(180deg, #006B50 0%, #008C6A 60%, #00A87E 100%)'
+  const desktopStyle = stateGrid
+    ? { borderRight: '1px solid #E8F5EF' }
     : undefined
+
   const drawerClass = stateGrid
     ? cn(
-        'fixed top-0 left-0 z-50 h-full w-72 flex flex-col text-white shadow-2xl transition-transform duration-300 ease-in-out',
+        'fixed top-0 left-0 z-50 h-full w-72 flex flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out',
         open ? 'translate-x-0' : '-translate-x-full',
       )
     : cn(
@@ -196,14 +195,13 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
 
   return (
     <>
-      {/* Desktop: fixed sidebar, always visible */}
-      <aside className={desktopClass} style={desktopBg ? { background: desktopBg } : undefined}>
+      {/* Desktop sidebar */}
+      <aside className={desktopClass} style={desktopStyle}>
         <NavContent />
       </aside>
 
-      {/* Mobile: overlay drawer */}
+      {/* Mobile drawer */}
       <div className="lg:hidden">
-        {/* Backdrop */}
         <div
           className={cn(
             'fixed inset-0 z-50 bg-black/60 transition-opacity duration-300',
@@ -212,19 +210,16 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
           onClick={onClose}
           aria-hidden
         />
-
-        {/* Drawer panel */}
-        <aside className={drawerClass} style={drawerBg ? { background: drawerBg } : undefined}>
-          {/* Close button */}
+        <aside className={drawerClass}>
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+            className="absolute top-4 right-4 p-1.5 rounded-lg transition-colors"
+            style={{ color: '#6B8E85' }}
             aria-label="关闭菜单"
           >
             <X size={18} />
           </button>
-
           <NavContent onLinkClick={onClose} />
         </aside>
       </div>

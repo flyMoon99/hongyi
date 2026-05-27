@@ -30,12 +30,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setSidebarOpen(false)
   }, [pathname])
 
-  // 根据用户所属公司动态更新浏览器 tab 标题
   useEffect(() => {
-    if (!user) return
-    const isHaoding = user.role !== 'ADMIN' && user.company !== 'STATE_GRID'
-    document.title = isHaoding ? '皓鼎弘毅管理后台' : '国家电网管理后台'
-  }, [user])
+    document.title = '综合业务管理系统'
+  }, [])
 
   useEffect(() => {
     if (isLoading) return
