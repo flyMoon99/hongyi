@@ -40,6 +40,9 @@ export default function EmployeesPage() {
   const [editing, setEditing] = useState<Employee | null>(null)
   const [deleting, setDeleting] = useState<Employee | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [restoreTarget, setRestoreTarget] = useState<Employee | null>(null)
+  const [pendingFormData, setPendingFormData] = useState<EmployeeFormValues | null>(null)
+  const [isRestoring, setIsRestoring] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isExporting, setIsExporting] = useState(false)
 
@@ -104,7 +107,6 @@ export default function EmployeesPage() {
 
   const handleSave = async (data: EmployeeFormValues) => {
     setIsSaving(true)
-    // Strip empty strings so optional fields (email, password) pass backend validation
     const payload = Object.fromEntries(
       Object.entries(data).filter(([, v]) => v !== '' && v !== undefined && v !== null)
     )
@@ -112,16 +114,49 @@ export default function EmployeesPage() {
       if (editing) {
         await apiClient.put(`/employees/${editing.id}`, payload)
         toast.success('员工信息已更新')
+        setFormOpen(false)
+        fetchEmployees()
       } else {
+        // 新增前先检查手机号是否属于已删除员工
+        const deleted = await apiClient.get('/employees/check-phone', {
+          params: { phone: data.phone },
+        }) as Employee | null
+        if (deleted) {
+          // 保存表单数据，关闭新增表单，弹出恢复确认框
+          setPendingFormData(data)
+          setRestoreTarget(deleted)
+          setFormOpen(false)
+          setIsSaving(false)
+          return
+        }
         await apiClient.post('/employees', payload)
         toast.success('员工添加成功')
+        setFormOpen(false)
+        fetchEmployees()
       }
-      setFormOpen(false)
-      fetchEmployees()
     } catch (err: unknown) {
       toast.error(typeof err === 'string' ? err : '操作失败')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleRestore = async () => {
+    if (!restoreTarget || !pendingFormData) return
+    setIsRestoring(true)
+    const payload = Object.fromEntries(
+      Object.entries(pendingFormData).filter(([, v]) => v !== '' && v !== undefined && v !== null)
+    )
+    try {
+      await apiClient.post(`/employees/${restoreTarget.id}/restore`, payload)
+      toast.success(`员工 ${restoreTarget.name} 账号已成功恢复`)
+      setRestoreTarget(null)
+      setPendingFormData(null)
+      fetchEmployees()
+    } catch (err: unknown) {
+      toast.error(typeof err === 'string' ? err : '恢复失败')
+    } finally {
+      setIsRestoring(false)
     }
   }
 
@@ -320,6 +355,51 @@ export default function EmployeesPage() {
             <AlertDialogCancel>取消</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
               确认删除
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!restoreTarget}
+        onOpenChange={(o) => { if (!o) { setRestoreTarget(null); setPendingFormData(null) } }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>检测到已注销账号</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-slate-600">
+                <p>
+                  手机号 <strong className="text-slate-800">{restoreTarget?.phone}</strong> 已存在一个被注销的员工账号：
+                </p>
+                <div className="rounded-lg border bg-slate-50 px-4 py-3 space-y-1">
+                  <div className="flex gap-2">
+                    <span className="text-slate-400 w-14 shrink-0">姓名</span>
+                    <span className="font-medium text-slate-800">{restoreTarget?.name}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-slate-400 w-14 shrink-0">手机号</span>
+                    <span className="font-mono text-slate-800">{restoreTarget?.phone}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="text-slate-400 w-14 shrink-0">所属公司</span>
+                    <span className="text-slate-800">{restoreTarget?.company ? COMPANY_LABELS[restoreTarget.company] : '-'}</span>
+                  </div>
+                </div>
+                <p>是否恢复该账号？恢复后将使用您填写的新信息（姓名、角色、密码等）更新账号。</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setRestoreTarget(null); setPendingFormData(null); setFormOpen(true) }}>
+              返回重填
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRestore}
+              disabled={isRestoring}
+              className={primaryBtn}
+            >
+              {isRestoring ? '恢复中...' : '确认恢复账号'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

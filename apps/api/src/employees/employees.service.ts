@@ -105,9 +105,60 @@ export class EmployeesService {
     return employee
   }
 
+  /** 检查手机号是否属于已软删除员工，是则返回该员工信息，否则返回 null */
+  async checkDeletedByPhone(phone: string) {
+    const employee = await this.prisma.employee.findUnique({
+      where: { phone },
+      select: { ...SAFE_SELECT, isDeleted: true },
+    })
+    if (!employee || !employee.isDeleted) return null
+    return employee
+  }
+
+  /** 恢复已软删除的员工账号，同时允许更新部分信息 */
+  async restore(
+    id: string,
+    dto: { name?: string; password?: string; role?: UserRole; company?: Company | null },
+    operator: OperatorUser,
+  ) {
+    const existing = await this.prisma.employee.findUnique({ where: { id } })
+    if (!existing) throw new NotFoundException('员工不存在')
+    if (!existing.isDeleted) throw new ConflictException('该员工账号仍然有效，无需恢复')
+
+    this.ensureCanAssignRole(operator.role, dto.role ?? existing.role)
+
+    const data: any = {
+      isDeleted: false,
+      deletedAt: null,
+      tokenVersion: { increment: 1 },
+    }
+    if (dto.name) data.name = dto.name
+    if (dto.role) data.role = dto.role
+    if (dto.password) data.password = await bcrypt.hash(dto.password, 10)
+    if (dto.company !== undefined) {
+      data.company = operator.role === 'DEPT_MANAGER' ? operator.company : dto.company
+    }
+
+    const employee = await this.prisma.employee.update({
+      where: { id },
+      data,
+      select: SAFE_SELECT,
+    })
+    await this.prisma.employeeLog.create({
+      data: {
+        employeeId: id,
+        operatorId: operator.id,
+        action: '恢复员工',
+        detail: `恢复员工账号：${employee.name}（${employee.phone}）`,
+      },
+    })
+    return employee
+  }
+
   async create(dto: CreateEmployeeDto, operator: OperatorUser) {
     const existing = await this.prisma.employee.findUnique({ where: { phone: dto.phone } })
-    if (existing) throw new ConflictException('手机号已存在')
+    if (existing && !existing.isDeleted) throw new ConflictException('手机号已存在')
+    if (existing && existing.isDeleted) throw new ConflictException('DELETED:' + existing.id)
 
     this.ensureCanAssignRole(operator.role, dto.role ?? 'STAFF')
 

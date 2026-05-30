@@ -25,6 +25,12 @@ export class EmployeesController {
   }
 
   /** 本人可查看自己的详情与操作日志；管理员/部门负责人可查看任意员工 */
+  /** 检查手机号是否属于已软删除员工 */
+  @Get('check-phone')
+  checkPhone(@Query('phone') phone: string) {
+    return this.service.checkDeletedByPhone(phone)
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string, @CurrentUser() user: any) {
     return this.service.findOne(id, user)
@@ -33,6 +39,12 @@ export class EmployeesController {
   @Post()
   create(@Body() dto: CreateEmployeeDto, @CurrentUser() user: any) {
     return this.service.create(dto, user)
+  }
+
+  /** 恢复已软删除的员工账号 */
+  @Post(':id/restore')
+  restore(@Param('id') id: string, @Body() dto: any, @CurrentUser() user: any) {
+    return this.service.restore(id, dto, user)
   }
 
   @Put(':id')
